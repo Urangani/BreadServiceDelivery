@@ -1,0 +1,31 @@
+// Signup.html
+
+The Signup should use Firebase Authentication for user registration and save additional user details (e.g., username, role) to Firestore. Upon successful signup, redirect to index.html for login.
+
+// Proposed Data Flow: Signup to Login with Firebase
+
+1. Include Firebase SDK in HTML files (via CDN: firebase-auth, firebase-firestore) and initialize Firebase app with config (apiKey, authDomain, projectId, etc.) in js/index.js.
+2. User accesses home.html (landing page) and clicks "Sign Up" link, navigating to signup.html.
+3. On signup.html, user fills the form (username, email, password, confirmPassword). Add JS event listener for form submit.
+4. Form submission validates input (password match, etc.). Then, use Firebase Auth: createUserWithEmailAndPassword(auth, email, password) to create user.
+5. If successful, store additional data in Firestore: addDoc to 'users' collection with {uid: user.uid, username, role: 'student' (default), email, createdAt: timestamp}.
+6. Show success message, then redirect to index.html.
+7. On index.html, user selects role (admin/staff/student), enters username/email and password.
+8. Login: Use Firebase Auth signInWithEmailAndPassword(auth, email, password). On success, query Firestore 'users' collection for user doc by uid, set currentUser with role.
+9. If authenticated, hide loginPage, show mainApp, load dashboard. Use onAuthStateChanged to monitor auth state.
+
+// Products Storage and Real-Time Retrieval with Firebase
+
+1. Initialize Firestore in js/index.js: const db = getFirestore(app);
+2. Store products in Firestore 'inventory' collection: Each doc {id, name, stock, price, description}. On app init, use getDocs(query(collection(db, 'inventory'))) to load into local array, or better, use onSnapshot for real-time.
+3. Real-time retrieval: In loadProducts(), use onSnapshot(collection(db, 'inventory'), (snapshot) => { inventory = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()})); render products; }) for live updates.
+4. Updates: For add stock, addDoc(collection(db, 'inventory'), newProduct); for update, updateDoc(doc(db, 'inventory', id), {stock: newStock}); for delete, deleteDoc(doc(db, 'inventory', id)).
+5. Similarly, store sales, deliveries, users in Firestore collections. Use transactions for inventory updates during checkout to prevent over-selling.
+6. Dashboard stats: Query aggregates (e.g., sum(total) where status=='completed' for revenue) or calculate from snapshot data.
+
+// Additional Notes
+- Firebase setup: Create project at console.firebase.google.com, enable Auth (Email/Password), Firestore (test mode for dev).
+- Security: Use Firestore rules to restrict access (e.g., authenticated users read/write own data; admins manage inventory).
+- Real-time: onSnapshot provides live sync across clients/devices without polling.
+- For roles: Store role in user doc; check on login. Use custom claims for advanced auth if needed.
+- No localStorage needed; all data in cloud for multi-device sync.
