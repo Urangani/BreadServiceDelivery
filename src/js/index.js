@@ -5,7 +5,7 @@
         let currentPage = 'dashboard';
         let cart = [];
 
-        // Mock Data
+        // Mock Data for student (only inventory needed)
         let inventory = [
             { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches' },
             { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread' },
@@ -14,28 +14,8 @@
             { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette' }
         ];
 
-        let sales = [
-            { id: 1001, customer: 'John Smith', items: 'White Bread x2', total: 24.00, date: '2025-09-17', status: 'completed' },
-            { id: 1002, customer: 'Jane Doe', items: 'Sourdough x1', total: 25.00, date: '2025-09-17', status: 'pending' },
-            { id: 1003, customer: 'Mike Wilson', items: 'Whole Wheat x1, Rye x1', total: 33.00, date: '2025-09-16', status: 'completed' }
-        ];
-
-        let deliveries = [
-            { id: 1001, customer: 'John Smith', address: 'Res A, Room 204', items: 'White Bread x2', status: 'delivered', assignedTo: 'Driver 1' },
-            { id: 1002, customer: 'Jane Doe', address: 'Res B, Room 105', items: 'Sourdough x1', status: 'pending', assignedTo: 'Driver 2' },
-            { id: 1003, customer: 'Mike Wilson', address: 'Off-campus: 123 Main St', items: 'Whole Wheat x1, Rye x1', status: 'in-transit', assignedTo: 'Driver 1' }
-        ];
-
-        let users = [
-            { username: 'admin', role: 'admin', email: 'admin@unibread.com', status: 'active', lastLogin: '2025-09-17' },
-            { username: 'staff1', role: 'staff', email: 'staff1@unibread.com', status: 'active', lastLogin: '2025-09-17' },
-            { username: 'student1', role: 'student', email: 'student1@university.edu', status: 'active', lastLogin: '2025-09-16' }
-        ];
-
-        // User roles and their accessible pages
+        // User roles and their accessible pages for student
         const userRoles = {
-            admin: ['dashboard', 'products', 'stock', 'sales', 'delivery', 'adminUsers'],
-            staff: ['dashboard', 'products', 'stock', 'sales', 'delivery'],
             student: ['dashboard', 'products', 'cart', 'payment']
         };
 
@@ -45,16 +25,10 @@
             updateDashboardStats();
         }
 
-        // Event Listeners
+        // Event Listeners for student
         function setupEventListeners() {
             // Login form
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            
-            // Stock form
-            document.getElementById('addStockForm').addEventListener('submit', handleAddStock);
-            
-            // User form
-            document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
             
             // Payment form
             document.getElementById('paymentForm').addEventListener('submit', handlePayment);
@@ -76,32 +50,36 @@
             // Mock authentication
             if (username && password && userType) {
                 currentUser = { username, role: userType };
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'block';
-                document.getElementById('welcomeMessage').textContent = `Welcome, ${username}!`;
-                
-                setupNavigation();
-                loadPage('dashboard');
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+                if (userType === 'admin') {
+                    window.location.href = 'admin.html';
+                } else if (userType === 'staff') {
+                    window.location.href = 'staff.html';
+                } else if (userType === 'student') {
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('mainApp').style.display = 'block';
+                    document.getElementById('welcomeMessage').textContent = `Welcome, ${username}!`;
+                    
+                    setupNavigation();
+                    loadPage('dashboard');
+                }
             } else {
                 alert('Please fill in all fields');
             }
         }
 
-        // Setup navigation based on user role
+        // Setup navigation for student
         function setupNavigation() {
             const navTabs = document.getElementById('navTabs');
             navTabs.innerHTML = '';
             
-            const pages = userRoles[currentUser.role];
+            const pages = userRoles.student;
             const pageNames = {
                 dashboard: 'Dashboard',
                 products: 'Products',
-                stock: 'Stock Management',
-                sales: 'Sales',
-                delivery: 'Delivery',
                 cart: 'Cart',
-                payment: 'Payment',
-                adminUsers: 'User Management'
+                payment: 'Payment'
             };
 
             pages.forEach(page => {
@@ -113,7 +91,7 @@
             });
         }
 
-        // Load page content
+        // Load page content for student
         function loadPage(pageName) {
             // Hide all pages
             document.querySelectorAll('.page').forEach(page => {
@@ -141,23 +119,11 @@
                 case 'products':
                     loadProducts();
                     break;
-                case 'stock':
-                    loadStock();
-                    break;
-                case 'sales':
-                    loadSales();
-                    break;
-                case 'delivery':
-                    loadDelivery();
-                    break;
                 case 'cart':
                     loadCart();
                     break;
                 case 'payment':
                     loadPayment();
-                    break;
-                case 'adminUsers':
-                    loadUsers();
                     break;
             }
         }
@@ -169,24 +135,18 @@
         }
 
         function updateDashboardStats() {
-            const totalRevenue = sales.reduce((sum, sale) => sum + (sale.status === 'completed' ? sale.total : 0), 0);
-            const totalSalesCount = sales.filter(sale => sale.status === 'completed').length;
-            const totalStock = inventory.reduce((sum, item) => sum + item.stock, 0);
-            const pendingDeliveries = deliveries.filter(delivery => delivery.status === 'pending').length;
-
-            document.getElementById('totalRevenue').textContent = `R${totalRevenue.toFixed(2)}`;
-            document.getElementById('totalSales').textContent = totalSalesCount;
-            document.getElementById('totalStock').textContent = totalStock;
-            document.getElementById('pendingDeliveries').textContent = pendingDeliveries;
+            // For student, show simplified stats or mock
+            document.getElementById('totalRevenue').textContent = 'R0.00';
+            document.getElementById('totalSales').textContent = '0';
+            document.getElementById('totalStock').textContent = 'N/A';
+            document.getElementById('pendingDeliveries').textContent = 'N/A';
         }
 
         function loadRecentActivity() {
             const activityTable = document.getElementById('recentActivity');
             const activities = [
                 { time: '10:30 AM', activity: 'New order received', amount: 'R25.00', status: 'pending' },
-                { time: '09:45 AM', activity: 'Stock updated', amount: '-', status: 'completed' },
-                { time: '09:15 AM', activity: 'Payment received', amount: 'R33.00', status: 'completed' },
-                { time: '08:30 AM', activity: 'Delivery completed', amount: 'R24.00', status: 'completed' }
+                { time: '09:15 AM', activity: 'Payment received', amount: 'R33.00', status: 'completed' }
             ];
 
             activityTable.innerHTML = activities.map(activity => `
@@ -199,7 +159,7 @@
             `).join('');
         }
 
-        // Products functions
+        // Products functions for student
         function loadProducts() {
             const productGrid = document.getElementById('productGrid');
             productGrid.innerHTML = inventory.map(product => `
@@ -210,9 +170,7 @@
                         <p>${product.description}</p>
                         <div class="product-price">R${product.price.toFixed(2)}</div>
                         <div class="stock-badge ${getStockClass(product.stock)}">${getStockStatus(product.stock)}</div>
-                        ${currentUser.role === 'student' ? `
-                            <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="addToCart(${product.id})">Add to Cart</button>
-                        ` : ''}
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="addToCart(${product.id})">Add to Cart</button>
                     </div>
                 </div>
             `).join('');
@@ -228,141 +186,6 @@
             if (stock > 20) return 'In Stock';
             if (stock > 5) return 'Low Stock';
             return 'Out of Stock';
-        }
-
-        // Stock management functions
-        function loadStock() {
-            const stockTable = document.getElementById('stockTable');
-            stockTable.innerHTML = inventory.map(item => `
-                <tr>
-                    <td>${item.name}</td>
-                    <td>${item.stock}</td>
-                    <td>R${item.price.toFixed(2)}</td>
-                    <td>R${(item.stock * item.price).toFixed(2)}</td>
-                    <td><span class="stock-badge ${getStockClass(item.stock)}">${getStockStatus(item.stock)}</span></td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="updateStock(${item.id})">Update</button>
-                        <button class="btn btn-danger" onclick="deleteStock(${item.id})">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function handleAddStock(e) {
-            e.preventDefault();
-            const name = document.getElementById('productName').value;
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const price = parseFloat(document.getElementById('unitPrice').value);
-            const description = document.getElementById('productDescription').value;
-
-            const newProduct = {
-                id: Date.now(),
-                name,
-                stock: quantity,
-                price,
-                description
-            };
-
-            inventory.push(newProduct);
-            closeModal('addStockModal');
-            document.getElementById('addStockForm').reset();
-            loadStock();
-            updateDashboardStats();
-            alert('Stock added successfully!');
-        }
-
-        function updateStock(id) {
-            const newStock = prompt('Enter new stock quantity:');
-            if (newStock !== null) {
-                const item = inventory.find(item => item.id === id);
-                if (item) {
-                    item.stock = parseInt(newStock);
-                    loadStock();
-                    updateDashboardStats();
-                }
-            }
-        }
-
-        function deleteStock(id) {
-            if (confirm('Are you sure you want to delete this item?')) {
-                inventory = inventory.filter(item => item.id !== id);
-                loadStock();
-                updateDashboardStats();
-            }
-        }
-
-        // Sales functions
-        function loadSales() {
-            const salesTable = document.getElementById('salesTable');
-            salesTable.innerHTML = sales.map(sale => `
-                <tr>
-                    <td>#${sale.id}</td>
-                    <td>${sale.customer}</td>
-                    <td>${sale.items}</td>
-                    <td>R${sale.total.toFixed(2)}</td>
-                    <td>${sale.date}</td>
-                    <td><span class="stock-badge ${sale.status === 'completed' ? 'stock-in' : 'stock-low'}">${sale.status}</span></td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="viewSale(${sale.id})">View</button>
-                        ${sale.status === 'pending' ? `<button class="btn btn-success" onclick="completeSale(${sale.id})">Complete</button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function viewSale(id) {
-            const sale = sales.find(s => s.id === id);
-            if (sale) {
-                alert(`Sale Details:\nID: #${sale.id}\nCustomer: ${sale.customer}\nItems: ${sale.items}\nTotal: R${sale.total.toFixed(2)}\nStatus: ${sale.status}`);
-            }
-        }
-
-        function completeSale(id) {
-            const sale = sales.find(s => s.id === id);
-            if (sale) {
-                sale.status = 'completed';
-                loadSales();
-                updateDashboardStats();
-            }
-        }
-
-        // Delivery functions
-        function loadDelivery() {
-            const deliveryTable = document.getElementById('deliveryTable');
-            deliveryTable.innerHTML = deliveries.map(delivery => `
-                <tr>
-                    <td>#${delivery.id}</td>
-                    <td>${delivery.customer}</td>
-                    <td>${delivery.address}</td>
-                    <td>${delivery.items}</td>
-                    <td><span class="stock-badge ${getDeliveryStatusClass(delivery.status)}">${delivery.status}</span></td>
-                    <td>${delivery.assignedTo}</td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="updateDeliveryStatus(${delivery.id})">Update Status</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function getDeliveryStatusClass(status) {
-            switch(status) {
-                case 'delivered': return 'stock-in';
-                case 'in-transit': return 'stock-low';
-                case 'pending': return 'stock-out';
-                default: return 'stock-low';
-            }
-        }
-
-        function updateDeliveryStatus(id) {
-            const newStatus = prompt('Enter new status (pending/in-transit/delivered):');
-            if (newStatus && ['pending', 'in-transit', 'delivered'].includes(newStatus)) {
-                const delivery = deliveries.find(d => d.id === id);
-                if (delivery) {
-                    delivery.status = newStatus;
-                    loadDelivery();
-                    updateDashboardStats();
-                }
-            }
         }
 
         // Cart functions
@@ -492,64 +315,7 @@
             updateDashboardStats();
         }
 
-        // User management functions
-        function loadUsers() {
-            const usersTable = document.getElementById('usersTable');
-            usersTable.innerHTML = users.map(user => `
-                <tr>
-                    <td>${user.username}</td>
-                    <td>${user.role}</td>
-                    <td>${user.email}</td>
-                    <td><span class="stock-badge stock-in">${user.status}</span></td>
-                    <td>${user.lastLogin}</td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="editUser('${user.username}')">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteUser('${user.username}')">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function handleAddUser(e) {
-            e.preventDefault();
-            const username = document.getElementById('newUsername').value;
-            const email = document.getElementById('newEmail').value;
-            const role = document.getElementById('newUserRole').value;
-
-            const newUser = {
-                username,
-                email,
-                role,
-                status: 'active',
-                lastLogin: 'Never'
-            };
-
-            users.push(newUser);
-            closeModal('addUserModal');
-            document.getElementById('addUserForm').reset();
-            loadUsers();
-            alert('User added successfully!');
-        }
-
-        function editUser(username) {
-            const user = users.find(u => u.username === username);
-            if (user) {
-                const newRole = prompt('Enter new role (admin/staff/student):', user.role);
-                if (newRole && ['admin', 'staff', 'student'].includes(newRole)) {
-                    user.role = newRole;
-                    loadUsers();
-                }
-            }
-        }
-
-        function deleteUser(username) {
-            if (confirm(`Are you sure you want to delete user: ${username}?`)) {
-                users = users.filter(u => u.username !== username);
-                loadUsers();
-            }
-        }
-
-        // Modal functions
+        // Modal functions (not used for student, but keep for future)
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'block';
         }
@@ -558,10 +324,11 @@
             document.getElementById(modalId).style.display = 'none';
         }
 
-        // Logout function
+        // Logout function for student
         function logout() {
             currentUser = null;
             cart = [];
+            localStorage.removeItem('currentUser');
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginPage').style.display = 'block';
             document.getElementById('loginForm').reset();

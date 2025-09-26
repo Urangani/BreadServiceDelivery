@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBread - Staff Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Main App -->
+    <div id="mainApp" class="container">
+        <header class="header">
+            <h1>🍞 UniBread Staff Panel</h1>
+            <div class="user-info">
+                <span id="welcomeMessage">Welcome, Staff!</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <nav class="nav-tabs" id="navTabs">
+            <!-- Navigation will be populated by JavaScript -->
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalRevenue">R0</div>
+                        <div class="stat-label">Total Revenue</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSales">0</div>
+                        <div class="stat-label">Total Sales</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalStock">0</div>
+                        <div class="stat-label">Items in Stock</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingDeliveries">0</div>
+                        <div class="stat-label">Pending Deliveries</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Recent Activity</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Activity</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentActivity">
+                                <!-- Recent activity will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Page -->
+            <div id="products" class="page">
+                <div class="card">
+                    <h3>Our Fresh Bread Selection</h3>
+                    <div class="product-grid" id="productGrid">
+                        <!-- Products will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Management Page -->
+            <div id="stock" class="page">
+                <div class="card">
+                    <h3>Stock Management</h3>
+                    <button class="btn btn-primary" onclick="openModal('addStockModal')">Add New Stock</button>
+
+                    <div class="table-container" style="margin-top: 1rem;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Current Stock</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Value</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockTable">
+                                <!-- Stock data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Page -->
+            <div id="sales" class="page">
+                <div class="card">
+                    <h3>Sales Management</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </thead>
+                            <tbody id="salesTable">
+                                <!-- Sales data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Page -->
+            <div id="delivery" class="page">
+                <div class="card">
+                    <h3>Delivery Management</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Address</th>
+                                    <th>Items</th>
+                                    <th>Status</th>
+                                    <th>Assigned To</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliveryTable">
+                                <!-- Delivery data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Stock Modal -->
+    <div id="addStockModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addStockModal')">&times;</span>
+            <h3>Add New Stock</h3>
+            <form id="addStockForm">
+                <div class="form-group">
+                    <label>Product Name:</label>
+                    <input type="text" class="form-control" id="productName" required>
+                </div>
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" class="form-control" id="quantity" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Unit Price (R):</label>
+                    <input type="number" class="form-control" id="unitPrice" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea class="form-control" id="productDescription" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Stock</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addStockModal')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/staff.js"></script>
+</body>
+</html>

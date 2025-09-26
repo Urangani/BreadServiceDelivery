@@ -23,9 +23,27 @@ The Signup should use Firebase Authentication for user registration and save add
 5. Similarly, store sales, deliveries, users in Firestore collections. Use transactions for inventory updates during checkout to prevent over-selling.
 6. Dashboard stats: Query aggregates (e.g., sum(total) where status=='completed' for revenue) or calculate from snapshot data.
 
+// Page Flow After Login
+
+1. User starts at home.html (landing page), clicks "Sign Up" to signup.html or "Login" to index.html.
+2. On index.html, user selects role (admin/staff/student), enters username/email and password, submits login form.
+3. handleLogin() in js/index.js validates, sets currentUser in localStorage, redirects based on role:
+   - If admin: window.location.href = 'admin.html'
+   - If staff: window.location.href = 'staff.html'
+   - If student: hide loginPage, show mainApp (student panel)
+4. On admin.html, window.onload calls init() in js/admin.js: checks localStorage for currentUser, if role=='admin', set welcome, setup navigation (dashboard, products, stock, sales, delivery, adminUsers), load dashboard.
+   - If not admin or no user, redirect to index.html.
+5. On staff.html, similar: init() in js/staff.js checks for role=='staff', setup navigation (dashboard, products, stock, sales, delivery), load dashboard.
+6. On index.html for student: after login, setup navigation (dashboard, products, cart, payment), load dashboard.
+7. Within each panel, clicking nav tabs calls loadPage(pageName), which hides other pages, shows selected page, loads content via switch (e.g., loadProducts(), loadStock()).
+8. Logout in any panel: clear localStorage, redirect to index.html (login page).
+9. Signup on signup.html: form submit calls handleSignup(), uses Firebase createUserWithEmailAndPassword, stores user data in Firestore, redirects to index.html on success.
+
 // Additional Notes
 - Firebase setup: Create project at console.firebase.google.com, enable Auth (Email/Password), Firestore (test mode for dev).
 - Security: Use Firestore rules to restrict access (e.g., authenticated users read/write own data; admins manage inventory).
 - Real-time: onSnapshot provides live sync across clients/devices without polling.
 - For roles: Store role in user doc; check on login. Use custom claims for advanced auth if needed.
 - No localStorage needed; all data in cloud for multi-device sync.
+
+ 
