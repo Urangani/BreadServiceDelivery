@@ -2,14 +2,30 @@
 let currentUser = null;
 let currentPage = 'dashboard';
 
-// Mock Data
-let inventory = [
-    { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches' },
-    { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread' },
-    { id: 3, name: 'Sourdough Bread', stock: 20, price: 25.00, description: 'Artisan sourdough bread' },
-    { id: 4, name: 'Rye Bread', stock: 15, price: 18.00, description: 'Traditional rye bread' },
-    { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette' }
-];
+let inventory = [];
+
+// Load inventory from localStorage on init
+function loadInventory() {
+    const stored = localStorage.getItem('unibreadInventory');
+    if (stored) {
+        inventory = JSON.parse(stored);
+    } else {
+        // Default mock data if no stored data
+        inventory = [
+            { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches', imageUrl: '' },
+            { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread', imageUrl: '' },
+            { id: 3, name: 'Sourdough Bread', stock: 20, price: 25.00, description: 'Artisan sourdough bread', imageUrl: '' },
+            { id: 4, name: 'Rye Bread', stock: 15, price: 18.00, description: 'Traditional rye bread', imageUrl: '' },
+            { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette', imageUrl: '' }
+        ];
+        saveInventory();
+    }
+}
+
+// Save inventory to localStorage
+function saveInventory() {
+    localStorage.setItem('unibreadInventory', JSON.stringify(inventory));
+}
 
 let sales = [
     { id: 1001, customer: 'John Smith', items: 'White Bread x2', total: 24.00, date: '2025-09-17', status: 'completed' },
@@ -36,11 +52,12 @@ const userRoles = {
 
 // Initialize the application
 function init() {
+    loadInventory();
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         if (currentUser.role !== 'admin') {
-            window.location.href = 'index.html';
+            window.location.href = '../index.html';
             return;
         }
         document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
@@ -48,7 +65,7 @@ function init() {
         setupNavigation();
         loadPage('dashboard');
     } else {
-        window.location.href = 'index.html';
+        window.location.href = '../index.html';
     }
 }
 
@@ -56,6 +73,9 @@ function init() {
 function setupEventListeners() {
     // Stock form
     document.getElementById('addStockForm').addEventListener('submit', handleAddStock);
+
+    // Edit product form
+    document.getElementById('editProductForm').addEventListener('submit', handleEditProduct);
 
     // User form
     document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
@@ -93,13 +113,19 @@ function loadPage(pageName) {
     });
 
     // Show selected page
-    document.getElementById(pageName).classList.add('active');
+    const pageElement = document.getElementById(pageName);
+    if (pageElement) {
+        pageElement.classList.add('active');
+    } else {
+        console.error(`Page element '${pageName}' not found`);
+        return;
+    }
 
     // Update navigation
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    if (event && event.target) {
+    if (event && event.target && event.target.classList) {
         event.target.classList.add('active');
     }
 
@@ -170,7 +196,10 @@ function loadProducts() {
     const productGrid = document.getElementById('productGrid');
     productGrid.innerHTML = inventory.map(product => `
         <div class="product-card">
-            <div class="product-image">🍞</div>
+            <div class="product-image">
+                ${product.imageUrl ? `<img src="${product.imageUrl}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">` : ''}
+                <span style="display: ${product.imageUrl ? 'none' : 'block'}">🍞</span>
+            </div>
             <div class="product-info">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
@@ -198,13 +227,21 @@ function loadStock() {
     const stockTable = document.getElementById('stockTable');
     stockTable.innerHTML = inventory.map(item => `
         <tr>
+            <td>
+                <div style="width:50px;height:50px;overflow:hidden;border-radius:4px;">
+                    ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\"display:flex;align-items:center;justify-content:center;font-size:20px;\">🍞</span>'">` : `<span style="display:flex;align-items:center;justify-content:center;font-size:20px;">🍞</span>`}
+                </div>
+            </td>
             <td>${item.name}</td>
+            <td>${item.description}</td>
             <td>${item.stock}</td>
             <td>R${item.price.toFixed(2)}</td>
             <td>R${(item.stock * item.price).toFixed(2)}</td>
             <td><span class="stock-badge ${getStockClass(item.stock)}">${getStockStatus(item.stock)}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="updateStock(${item.id})">Update</button>
+                <button class="btn btn-secondary" onclick="editProduct(${item.id})" style="margin-right:5px;">Edit</button>
+                <button class="btn btn-success" onclick="addStock(${item.id}, 1)" style="margin-right:5px;">+ Stock</button>
+                <button class="btn btn-warning" onclick="removeStock(${item.id}, 1)" style="margin-right:5px;">- Stock</button>
                 <button class="btn btn-danger" onclick="deleteStock(${item.id})">Delete</button>
             </td>
         </tr>
@@ -214,42 +251,101 @@ function loadStock() {
 function handleAddStock(e) {
     e.preventDefault();
     const name = document.getElementById('productName').value;
+    const description = document.getElementById('productDescription').value;
     const quantity = parseInt(document.getElementById('quantity').value);
     const price = parseFloat(document.getElementById('unitPrice').value);
-    const description = document.getElementById('productDescription').value;
+    const imageUrl = document.getElementById('imageUrl').value || '';
 
     const newProduct = {
         id: Date.now(),
         name,
+        description,
         stock: quantity,
         price,
-        description
+        imageUrl
     };
 
     inventory.push(newProduct);
+    saveInventory();
     closeModal('addStockModal');
     document.getElementById('addStockForm').reset();
     loadStock();
+    loadProducts();
     updateDashboardStats();
-    alert('Stock added successfully!');
+    alert('Product added successfully!');
 }
 
-function updateStock(id) {
-    const newStock = prompt('Enter new stock quantity:');
-    if (newStock !== null) {
-        const item = inventory.find(item => item.id === id);
-        if (item) {
-            item.stock = parseInt(newStock);
+function editProduct(id) {
+    const item = inventory.find(item => item.id === id);
+    if (item) {
+        document.getElementById('editProductId').value = id;
+        document.getElementById('editProductName').value = item.name;
+        document.getElementById('editProductDescription').value = item.description;
+        document.getElementById('editQuantity').value = item.stock;
+        document.getElementById('editUnitPrice').value = item.price;
+        document.getElementById('editImageUrl').value = item.imageUrl || '';
+        openModal('editProductModal');
+    }
+}
+
+function handleEditProduct(e) {
+    e.preventDefault();
+    const id = parseInt(document.getElementById('editProductId').value);
+    const name = document.getElementById('editProductName').value;
+    const description = document.getElementById('editProductDescription').value;
+    const stock = parseInt(document.getElementById('editQuantity').value);
+    const price = parseFloat(document.getElementById('editUnitPrice').value);
+    const imageUrl = document.getElementById('editImageUrl').value || '';
+
+    const item = inventory.find(item => item.id === id);
+    if (item) {
+        item.name = name;
+        item.description = description;
+        item.stock = stock;
+        item.price = price;
+        item.imageUrl = imageUrl;
+        saveInventory();
+        closeModal('editProductModal');
+        document.getElementById('editProductForm').reset();
+        loadStock();
+        loadProducts();
+        updateDashboardStats();
+        alert('Product updated successfully!');
+    }
+}
+
+function addStock(id, amount = 1) {
+    const item = inventory.find(item => item.id === id);
+    if (item) {
+        item.stock += amount;
+        saveInventory();
+        loadStock();
+        updateDashboardStats();
+        alert(`Added ${amount} to stock. New stock: ${item.stock}`);
+    }
+}
+
+function removeStock(id, amount = 1) {
+    const item = inventory.find(item => item.id === id);
+    if (item) {
+        if (item.stock >= amount) {
+            item.stock -= amount;
+            saveInventory();
             loadStock();
             updateDashboardStats();
+            alert(`Removed ${amount} from stock. New stock: ${item.stock}`);
+        } else {
+            alert('Insufficient stock to remove.');
         }
     }
 }
 
 function deleteStock(id) {
-    if (confirm('Are you sure you want to delete this item?')) {
+    if (confirm('Are you sure you want to delete this product?')) {
         inventory = inventory.filter(item => item.id !== id);
+        saveInventory();
         loadStock();
+        loadProducts();
         updateDashboardStats();
     }
 }
@@ -398,7 +494,7 @@ function closeModal(modalId) {
 function logout() {
     currentUser = null;
     localStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
+    window.location.href = '../index.html';
 }
 
 // Close modals when clicking outside

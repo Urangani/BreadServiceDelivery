@@ -328,7 +328,7 @@ function closeModal(modalId) {
 function logout() {
     currentUser = null;
     localStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
+    window.location.href = '../index.html';
 }
 
 // Close modals when clicking outside

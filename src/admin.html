@@ -77,13 +77,15 @@
             <div id="stock" class="page">
                 <div class="card">
                     <h3>Stock Management</h3>
-                    <button class="btn btn-primary" onclick="openModal('addStockModal')">Add New Stock</button>
+                    <button class="btn btn-primary" onclick="openModal('addStockModal')">Add New Product</button>
 
                     <div class="table-container" style="margin-top: 1rem;">
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Image</th>
                                     <th>Product</th>
+                                    <th>Description</th>
                                     <th>Current Stock</th>
                                     <th>Unit Price</th>
                                     <th>Total Value</th>
@@ -177,30 +179,67 @@
     </div>
 
     <!-- Modals -->
-    <!-- Add Stock Modal -->
+    <!-- Add Product Modal -->
     <div id="addStockModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('addStockModal')">&times;</span>
-            <h3>Add New Stock</h3>
+            <h3>Add New Product</h3>
             <form id="addStockForm">
                 <div class="form-group">
                     <label>Product Name:</label>
                     <input type="text" class="form-control" id="productName" required>
                 </div>
                 <div class="form-group">
-                    <label>Quantity:</label>
-                    <input type="number" class="form-control" id="quantity" required min="1">
+                    <label>Description:</label>
+                    <textarea class="form-control" id="productDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Initial Stock:</label>
+                    <input type="number" class="form-control" id="quantity" required min="0">
                 </div>
                 <div class="form-group">
                     <label>Unit Price (R):</label>
                     <input type="number" class="form-control" id="unitPrice" required min="0" step="0.01">
                 </div>
                 <div class="form-group">
-                    <label>Description:</label>
-                    <textarea class="form-control" id="productDescription" rows="3"></textarea>
+                    <label>Image URL (optional):</label>
+                    <input type="url" class="form-control" id="imageUrl" placeholder="https://example.com/bread.jpg">
                 </div>
-                <button type="submit" class="btn btn-primary">Add Stock</button>
+                <button type="submit" class="btn btn-primary">Add Product</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addStockModal')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editProductModal')">&times;</span>
+            <h3>Edit Product</h3>
+            <form id="editProductForm">
+                <input type="hidden" id="editProductId">
+                <div class="form-group">
+                    <label>Product Name:</label>
+                    <input type="text" class="form-control" id="editProductName" required>
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea class="form-control" id="editProductDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Stock:</label>
+                    <input type="number" class="form-control" id="editQuantity" required min="0">
+                </div>
+                <div class="form-group">
+                    <label>Unit Price (R):</label>
+                    <input type="number" class="form-control" id="editUnitPrice" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Image URL (optional):</label>
+                    <input type="url" class="form-control" id="editImageUrl" placeholder="https://example.com/bread.jpg">
+                </div>
+                <button type="submit" class="btn btn-primary">Update Product</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editProductModal')">Cancel</button>
             </form>
         </div>
     </div>

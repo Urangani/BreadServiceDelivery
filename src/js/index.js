@@ -19,6 +19,41 @@
             student: ['dashboard', 'products', 'cart', 'payment']
         };
 
+        // Simple JWT decode function for Google ID token
+        function decodeJWT(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error('Error decoding JWT:', e);
+                return null;
+            }
+        }
+
+        // Google Sign-In callback
+        window.handleGoogleSignIn = function(response) {
+            const payload = decodeJWT(response.credential);
+            if (payload) {
+                const username = payload.email;
+                const name = payload.name;
+                currentUser = { username, name, role: 'student', google: true };
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('welcomeMessage').textContent = `Welcome, ${name || username}!`;
+                
+                setupNavigation();
+                loadPage('dashboard');
+            } else {
+                alert('Google Sign-In failed. Please try again.');
+            }
+        };
+
         // Initialize the application
         function init() {
             setupEventListeners();
@@ -53,9 +88,9 @@
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
                 if (userType === 'admin') {
-                    window.location.href = 'admin.html';
+                    window.location.href = 'src/admin.html';
                 } else if (userType === 'staff') {
-                    window.location.href = 'staff.html';
+                    window.location.href = 'src/staff.html';
                 } else if (userType === 'student') {
                     document.getElementById('loginPage').style.display = 'none';
                     document.getElementById('mainApp').style.display = 'block';
