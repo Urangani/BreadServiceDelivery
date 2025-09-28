@@ -78,6 +78,10 @@ async function handleLogin(e) {
 // Initialize the application
 function init() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.getElementById('showPassword').addEventListener('change', function() {
+        const passwordInput = document.getElementById('password');
+        passwordInput.type = this.checked ? 'text' : 'password';
+    });
 }
 
 // Initialize the application
