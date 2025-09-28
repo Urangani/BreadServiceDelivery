@@ -1,0 +1,336 @@
+# Firebase Database Design for UniBread App
+
+## Overview
+This design uses Firebase Firestore (NoSQL document database) for storing app data and Firebase Authentication for user management. Firestore provides real-time synchronization, scalable queries, and security rules. The schema is based on the app's entities: users, products (inventory), orders (sales), and deliveries.
+
+Why Firestore?
+- Real-time updates (e.g., stock changes visible instantly to all users).
+- Offline support via SDK.
+- Integrates seamlessly with Firebase Auth for role-based access.
+- Scalable for future features like notifications or analytics.
+
+Alternative: Realtime Database (JSON tree) could work for simpler structure, but Firestore is better for relational-like queries (e.g., filter orders by user).
+
+## Firestore Collections and Schema
+
+### 1. users (Collection)
+Stores all user profiles. Each document ID is the user's Firebase UID (from Auth).
+- Fields:
+  - username: string (unique, e.g., "admin")
+  - email: string (e.g., "admin@unibread.com")
+  - role: string (enum: "admin", "staff", "student")
+  - status: string (enum: "active", "inactive")
+  - lastLogin: timestamp (e.g., Firebase Timestamp)
+  - createdAt: timestamp (auto-set on creation)
+- Example Document:
+  {
+    "username": "admin",
+    "email": "admin@unibread.com",
+    "role": "admin",
+    "status": "active",
+    "lastLogin": Timestamp(2025, 9, 28, 21, 0, 0),
+    "createdAt": Timestamp(2025, 9, 1, 0, 0, 0)
+  }
+- Indexes: Composite on role + status for efficient filtering (e.g., active admins).
+- Security: Admins can read/write all; staff/students read own + public.
+
+### 2. products (Collection)
+Stores inventory items. Document ID auto-generated.
+- Fields:
+  - name: string (e.g., "White Bread")
+  - description: string (e.g., "Fresh white bread")
+  - stock: number (e.g., 50)
+  - price: number (e.g., 12.00)
+  - imageUrl: string (optional, e.g., "https://example.com/bread.jpg")
+  - createdAt: timestamp (auto)
+- Example Document:
+  {
+    "name": "White Bread",
+    "description": "Fresh white bread, perfect for sandwiches",
+    "stock": 50,
+    "price": 12.00,
+    "imageUrl": "",
+    "createdAt": Timestamp(2025, 9, 1, 0, 0, 0)
+  }
+- Queries: Order by stock ascending for low-stock alerts.
+- Security: Admins/staff write; all read.
+
+### 3. orders (Collection)
+Stores sales/orders. Document ID auto-generated. Links to users via userId.
+- Fields:
+  - userId: string (user's UID)
+  - customer: string (e.g., "John Smith" from student username)
+  - items: array of objects [{ productId: string (doc ID), quantity: number }]
+  - total: number (e.g., 24.00)
+  - date: timestamp
+  - status: string (enum: "pending", "completed", "cancelled")
+  - deliveryId: string (optional reference to deliveries doc)
+- Example Document:
+  {
+    "userId": "studentUid123",
+    "customer": "student1",
+    "items": [{ "productId": "prod1", "quantity": 2 }],
+    "total": 24.00,
+    "date": Timestamp(2025, 9, 28, 21, 0, 0),
+    "status": "completed",
+    "deliveryId": "deliv456"
+  }
+- Queries: Filter by userId + status for user history; by status for admin dashboard.
+- Security: Owner (userId) reads own; admins read/write all.
+
+### 4. deliveries (Collection)
+Stores delivery assignments. Document ID auto-generated. Links to orders.
+- Fields:
+  - orderId: string (reference to orders doc)
+  - customer: string
+  - address: string (e.g., "Res A, Room 204")
+  - items: string (summary, e.g., "White Bread x2")
+  - status: string (enum: "pending", "in-transit", "delivered")
+  - assignedTo: string (e.g., "Driver 1")
+  - updatedAt: timestamp (auto on update)
+- Example Document:
+  {
+    "orderId": "order789",
+    "customer": "John Smith",
+    "address": "Res A, Room 204",
+    "items": "White Bread x2",
+    "status": "delivered",
+    "assignedTo": "Driver 1",
+    "updatedAt": Timestamp(2025, 9, 28, 22, 0, 0)
+  }
+- Queries: Filter by status for pending deliveries.
+- Security: Staff/admins write; all read public.
+
+## Firebase Authentication Setup
+- Providers: Email/Password (for mock login) + Google (existing integration).
+- Custom Claims: Add role to user claims for serverless auth (e.g., admin-only access).
+- On Sign-Up/Login: Create/update user doc in Firestore with role.
+
+## Step-by-Step Integration Guide
+
+### Step 1: Set Up Firebase Project
+1. Go to [Firebase Console](https://console.firebase.google.com).
+2. Create a new project (e.g., "unibread-app").
+3. Enable Firestore: Project Settings > Firestore Database > Create database (start in test mode for dev; production: locked rules).
+4. Enable Authentication: Project Settings > Authentication > Sign-in method > Enable Google (add your Google Client ID from earlier) and Email/Password.
+5. Add Web App: Project Settings > General > Add app (web icon) > Register app > Copy config object (e.g., apiKey, authDomain, etc.).
+6. Install Firestore Rules: In Firestore > Rules, start with:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+       match /products/{doc} {
+         allow read: if true;
+         allow write: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff']);
+       }
+       // Similar for orders/deliveries...
+     }
+   }
+   ```
+   Update for production (e.g., validate roles via custom claims).
+
+### Step 2: Install Firebase SDK
+Since the app is static HTML/JS, use CDN (no npm needed).
+1. Add to <head> of index.html, admin.html, staff.html, student.html:
+   ```
+   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+   ```
+2. Create src/js/firebase-config.js:
+   ```
+   // Your config from Step 1
+   const firebaseConfig = {
+     apiKey: "YOUR_API_KEY",
+     authDomain: "your-project.firebaseapp.com",
+     projectId: "your-project",
+     storageBucket: "your-project.appspot.com",
+     messagingSenderId: "123",
+     appId: "your-app-id"
+   };
+
+   // Initialize Firebase
+   firebase.initializeApp(firebaseConfig);
+   const auth = firebase.auth();
+   const db = firebase.firestore();
+   ```
+
+3. Include in all HTML: <script src="js/firebase-config.js"></script> before other JS.
+
+### Step 3: Integrate Authentication
+Update src/js/index.js:
+1. Replace mock login with Firebase Auth.
+   - For Email/Password:
+     ```
+     auth.signInWithEmailAndPassword(email, password).then((userCredential) => {
+       // Fetch/set role from Firestore users doc
+       const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
+       const role = userDoc.data().role;
+       localStorage.setItem('currentUser', JSON.stringify({ uid: userCredential.user.uid, role, username: userDoc.data().username }));
+       // Redirect based on role
+     });
+     ```
+   - For Google: Update handleGoogleSignIn:
+     ```
+     const provider = new firebase.auth.GoogleAuthProvider();
+     auth.signInWithPopup(provider).then((result) => {
+       const user = result.user;
+       // Create/update user doc if new
+       db.collection('users').doc(user.uid).set({
+         username: user.email.split('@')[0],
+         email: user.email,
+         role: 'student', // Default for Google
+         status: 'active',
+         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+       }, { merge: true });
+       localStorage.setItem('currentUser', JSON.stringify({ uid: user.uid, role: 'student', username: user.email.split('@')[0] }));
+       window.location.href = 'src/student.html';
+     });
+     ```
+2. On app init (admin.js, etc.): Check auth state:
+   ```
+   auth.onAuthStateChanged((user) => {
+     if (user) {
+       // Fetch role from Firestore if not in localStorage
+       db.collection('users').doc(user.uid).get().then((doc) => {
+         if (doc.exists) {
+           const role = doc.data().role;
+           if (role !== 'admin') window.location.href = '../index.html'; // For admin.js
+         }
+       });
+     } else {
+       window.location.href = '../index.html';
+     }
+   });
+   ```
+3. Logout: auth.signOut(); localStorage.clear();
+
+### Step 4: Migrate Data Storage to Firestore
+Replace localStorage arrays with Firestore queries. Use real-time listeners for dynamic updates.
+
+1. Load Data (e.g., in admin.js init):
+   - Products/Inventory:
+     ```
+     const productsRef = db.collection('products');
+     productsRef.onSnapshot((snapshot) => {
+       inventory = [];
+       snapshot.forEach((doc) => {
+         inventory.push({ id: doc.id, ...doc.data() });
+       });
+       loadProducts(); // Update UI
+       updateDashboardStats();
+     });
+     ```
+   - Users (for admin):
+     ```
+     function loadUsers() {
+       const usersRef = db.collection('users').where('role', '==', currentRole);
+       usersRef.onSnapshot((snapshot) => {
+         users = [];
+         snapshot.forEach((doc) => {
+           users.push({ username: doc.data().username, ...doc.data(), id: doc.id });
+         });
+         // Populate table
+         const usersTable = document.getElementById('usersTable');
+         usersTable.innerHTML = users.map(user => `
+           <tr>
+             <td>${user.username}</td>
+             <td>${user.email}</td>
+             <td><span class="stock-badge stock-in">${user.status}</span></td>
+             <td>${user.lastLogin ? user.lastLogin.toDate().toLocaleDateString() : 'Never'}</td>
+             <td>
+               <button class="btn btn-secondary" onclick="editUser('${user.username}')">Edit</button>
+               <button class="btn btn-danger" onclick="deleteUser('${user.username}')">Delete</button>
+             </td>
+           </tr>
+         `).join('');
+       });
+     }
+     ```
+   - Similar for sales (orders) and deliveries: Query by status or userId.
+
+2. Add Data (e.g., handleAddStock):
+   ```
+   async function handleAddStock(e) {
+     e.preventDefault();
+     // Get form values...
+     await db.collection('products').add({
+       name, description, stock: quantity, price, imageUrl,
+       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+     });
+     // Close modal, reset form
+     // No need to manually update UI; onSnapshot will trigger
+   }
+   ```
+
+3. Edit Data (e.g., handleEditProduct):
+   ```
+   async function handleEditProduct(e) {
+     e.preventDefault();
+     const id = document.getElementById('editProductId').value;
+     // Get form values...
+     await db.collection('products').doc(id).update({
+       name, description, stock, price, imageUrl
+     });
+     // Close modal
+   }
+   ```
+
+4. Delete Data (e.g., deleteStock):
+   ```
+   async function deleteStock(id) {
+     if (confirm('Delete?')) {
+       await db.collection('products').doc(id).delete();
+       // onSnapshot handles UI update
+     }
+   }
+   ```
+
+5. For Orders/Deliveries: Similar CRUD, link via references (e.g., add delivery with orderId).
+
+### Step 5: Update Role-Based Access
+- In JS: Check localStorage role before actions (e.g., if role !== 'admin' hide add button).
+- Firestore Rules: Enforce server-side (e.g., allow write if resource.data.role == 'admin').
+- Custom Claims for advanced: Admin sets claims on user doc creation:
+  ```
+  admin.auth().setCustomUserClaims(uid, { role: 'admin' });
+  ```
+
+### Step 6: Data Migration from LocalStorage
+1. On first run (check if Firestore empty), script to import:
+   - Loop through local arrays, addDoc to collections.
+   - Run once in console or a one-time script.
+2. Clear localStorage after migration.
+
+### Step 7: Testing and Deployment
+1. Test locally: Run server, login, add/edit data, verify real-time sync (open two tabs).
+2. Handle Errors: Use try/catch for async ops, show alerts.
+3. Deploy: Host on Firebase Hosting (firebase deploy) for free HTTPS.
+4. Monitor: Use Firebase Console for data viewing, Analytics for usage.
+
+## Data Flow with Firebase
+1. **Initialization**: App loads, initializes Firebase, listens to auth state.
+2. **Authentication Flow**:
+   - User logs in (email or Google) -> Auth creates/signs in UID -> Fetch/create user doc in Firestore -> Store role/UID in localStorage -> Redirect to role-specific page.
+   - Real-time: lastLogin updates on sign-in via cloud function or client update.
+3. **Data Reading Flow** (Real-time):
+   - On page load (e.g., admin dashboard): Attach onSnapshot to collections/queries (e.g., products, orders where status='pending').
+   - Firestore pushes changes -> JS updates arrays/UI (e.g., stock decreases, table refreshes automatically).
+   - Offline: SDK caches data, syncs on reconnect.
+4. **Data Writing Flow** (CRUD):
+   - Add (e.g., new order from student): Client writes to orders collection with userId -> Success callback updates cart/UI -> Triggers onSnapshot in admin sales tab.
+   - Edit (e.g., update delivery status): Staff writes update -> Real-time push to all listeners (e.g., dashboard pending count decreases).
+   - Delete: Client deletes doc -> Listeners remove from UI.
+   - Validation: Client-side checks + Firestore rules prevent unauthorized writes.
+5. **Role-Based Flow**:
+   - Admin: Full read/write on all collections.
+   - Staff: Read/write deliveries/orders; read products.
+   - Student: Read products; write/read own orders.
+   - Example: Student places order -> Writes to orders (userId=own UID) -> Admin sees in sales tab via query.
+6. **Error/Offline Flow**: SDK retries writes; use .catch() for auth errors (e.g., invalid login).
+7. **Scalability**: Firestore auto-scales; add Cloud Functions for complex logic (e.g., email on order complete).
+
+This design ensures secure, real-time data sync across the app. For implementation, update JS files as shown. If needed, I can provide full code diffs.

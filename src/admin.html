@@ -154,14 +154,21 @@
             <div id="adminUsers" class="page">
                 <div class="card">
                     <h3>User Management</h3>
-                    <button class="btn btn-primary" onclick="openModal('addUserModal')">Add New User</button>
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                        <label for="roleFilter">View Role:</label>
+                        <select id="roleFilter" class="form-control" style="width: auto;">
+                            <option value="admin">Admin</option>
+                            <option value="staff">Staff</option>
+                            <option value="student">Student</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openModal('addUserModal')">Add New User</button>
+                    </div>
 
-                    <div class="table-container" style="margin-top: 1rem;">
+                    <div class="table-container">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Username</th>
-                                    <th>Role</th>
                                     <th>Email</th>
                                     <th>Status</th>
                                     <th>Last Login</th>

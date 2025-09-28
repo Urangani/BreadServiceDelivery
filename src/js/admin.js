@@ -1,6 +1,7 @@
 // Application State
 let currentUser = null;
 let currentPage = 'dashboard';
+let currentRole = 'admin';
 
 let inventory = [];
 
@@ -79,6 +80,12 @@ function setupEventListeners() {
 
     // User form
     document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
+
+    // Role filter
+    document.getElementById('roleFilter').addEventListener('change', function() {
+        currentRole = this.value;
+        loadUsers();
+    });
 }
 
 // Setup navigation for admin
@@ -427,10 +434,10 @@ function updateDeliveryStatus(id) {
 // User management functions
 function loadUsers() {
     const usersTable = document.getElementById('usersTable');
-    usersTable.innerHTML = users.map(user => `
+    const filteredUsers = users.filter(user => user.role === currentRole);
+    usersTable.innerHTML = filteredUsers.map(user => `
         <tr>
             <td>${user.username}</td>
-            <td>${user.role}</td>
             <td>${user.email}</td>
             <td><span class="stock-badge stock-in">${user.status}</span></td>
             <td>${user.lastLogin}</td>

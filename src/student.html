@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBread - Student Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+    <!-- Main App -->
+    <div id="mainApp" class="container">
+        <header class="header">
+            <h1>🍞 UniBread Student Portal</h1>
+            <div class="user-info">
+                <span id="welcomeMessage">Welcome, Student!</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <nav class="nav-tabs" id="navTabs">
+            <!-- Navigation will be populated by JavaScript -->
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalRevenue">R0.00</div>
+                        <div class="stat-label">Total Spent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSales">0</div>
+                        <div class="stat-label">Total Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalStock">0</div>
+                        <div class="stat-label">Pending Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingDeliveries">0</div>
+                        <div class="stat-label">Completed Orders</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>My Order History</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Order ID</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentActivity">
+                                <!-- Recent activity will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Page -->
+            <div id="products" class="page">
+                <div class="card">
+                    <h3>Our Fresh Bread Selection</h3>
+                    <div class="product-grid" id="productGrid">
+                        <!-- Products will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Page -->
+            <div id="cart" class="page">
+                <div class="card">
+                    <h3>Shopping Cart</h3>
+                    <div id="cartItems">
+                        <!-- Cart items will be populated here -->
+                    </div>
+                    <div class="cart-total">
+                        Total: R<span id="cartTotal">0</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="proceedToCheckout()" style="margin-top: 1rem;">Proceed to Checkout</button>
+                </div>
+            </div>
+
+            <!-- Payment Page -->
+            <div id="payment" class="page">
+                <div class="card">
+                    <h3>Payment Information</h3>
+                    <form id="paymentForm">
+                        <div class="form-group">
+                            <label>Payment Method:</label>
+                            <select class="form-control" id="paymentMethod" required>
+                                <option value="">Select Payment Method</option>
+                                <option value="card">Credit/Debit Card</option>
+                                <option value="eft">EFT</option>
+                                <option value="cash">Cash on Delivery</option>
+                            </select>
+                        </div>
+
+                        <div id="cardDetails" style="display: none;">
+                            <div class="form-group">
+                                <label>Card Number:</label>
+                                <input type="text" class="form-control" placeholder="1234 5678 9012 3456">
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Expiry Date:</label>
+                                    <input type="text" class="form-control" placeholder="MM/YY">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>CVV:</label>
+                                    <input type="text" class="form-control" placeholder="123">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Delivery Address:</label>
+                            <textarea class="form-control" rows="3" required placeholder="Enter your delivery address..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Special Instructions:</label>
+                            <textarea class="form-control" rows="2" placeholder="Any special delivery instructions..."></textarea>
+                        </div>
+
+                        <div class="cart-total">
+                            Total Amount: R<span id="finalTotal">0</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 1rem;">Complete Order</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('feedbackModal')">&times;</span>
+            <h2>Submit Feedback</h2>
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label for="feedbackName">Name:</label>
+                    <input type="text" id="feedbackName" name="feedbackName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="feedbackMobile">Mobile:</label>
+                    <input type="tel" id="feedbackMobile" name="feedbackMobile" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="feedbackEmail">Email:</label>
+                    <input type="email" id="feedbackEmail" name="feedbackEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="feedbackMessage">Message:</label>
+                    <textarea id="feedbackMessage" name="feedbackMessage" class="form-control" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Feedback</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/student.js"></script>
+</body>
+</html>
