@@ -2,26 +2,14 @@
 let currentUser = null;
 let currentPage = 'dashboard';
 
-// Mock Data
-let inventory = [
-    { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches' },
-    { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread' },
-    { id: 3, name: 'Sourdough Bread', stock: 20, price: 25.00, description: 'Artisan sourdough bread' },
-    { id: 4, name: 'Rye Bread', stock: 15, price: 18.00, description: 'Traditional rye bread' },
-    { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette' }
-];
+let inventory = [];
+let sales = [];
+let deliveries = [];
 
-let sales = [
-    { id: 1001, customer: 'John Smith', items: 'White Bread x2', total: 24.00, date: '2025-09-17', status: 'completed' },
-    { id: 1002, customer: 'Jane Doe', items: 'Sourdough x1', total: 25.00, date: '2025-09-17', status: 'pending' },
-    { id: 1003, customer: 'Mike Wilson', items: 'Whole Wheat x1, Rye x1', total: 33.00, date: '2025-09-16', status: 'completed' }
-];
-
-let deliveries = [
-    { id: 1001, customer: 'John Smith', address: 'Res A, Room 204', items: 'White Bread x2', status: 'delivered', assignedTo: 'Driver 1' },
-    { id: 1002, customer: 'Jane Doe', address: 'Res B, Room 105', items: 'Sourdough x1', status: 'pending', assignedTo: 'Driver 2' },
-    { id: 1003, customer: 'Mike Wilson', address: 'Off-campus: 123 Main St', items: 'Whole Wheat x1, Rye x1', status: 'in-transit', assignedTo: 'Driver 1' }
-];
+// Real-time listeners
+let productsUnsubscribe;
+let ordersUnsubscribe;
+let deliveriesUnsubscribe;
 
 // User roles and their accessible pages for staff
 const userRoles = {
@@ -30,20 +18,62 @@ const userRoles = {
 
 // Initialize the application
 function init() {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-        currentUser = JSON.parse(storedUser);
-        if (currentUser.role !== 'staff') {
-            window.location.href = 'index.html';
-            return;
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                if (currentUser.role !== 'staff') {
+                    window.location.href = '../index.html';
+                    return;
+                }
+                document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
+                setupEventListeners();
+                setupNavigation();
+                setupRealtimeListeners();
+                loadPage('dashboard');
+            } else {
+                window.location.href = '../index.html';
+            }
+        } else {
+            window.location.href = '../index.html';
         }
-        document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
-        setupEventListeners();
-        setupNavigation();
-        loadPage('dashboard');
-    } else {
-        window.location.href = 'index.html';
-    }
+    });
+}
+
+// Set up real-time listeners for Firestore
+function setupRealtimeListeners() {
+    // Products listener (read-only for staff)
+    productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
+        inventory = [];
+        snapshot.forEach((doc) => {
+            inventory.push({ id: doc.id, ...doc.data() });
+        });
+        // Update UI
+        if (currentPage === 'products') loadProducts();
+        if (currentPage === 'stock') loadStock();
+        updateDashboardStats();
+    });
+
+    // Orders listener
+    ordersUnsubscribe = db.collection('orders').onSnapshot((snapshot) => {
+        sales = [];
+        snapshot.forEach((doc) => {
+            sales.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'sales') loadSales();
+        updateDashboardStats();
+    });
+
+    // Deliveries listener
+    deliveriesUnsubscribe = db.collection('deliveries').onSnapshot((snapshot) => {
+        deliveries = [];
+        snapshot.forEach((doc) => {
+            deliveries.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'delivery') loadDelivery();
+        updateDashboardStats();
+    });
 }
 
 // Event Listeners
@@ -198,46 +228,56 @@ function loadStock() {
     `).join('');
 }
 
-function handleAddStock(e) {
+async function handleAddStock(e) {
     e.preventDefault();
     const name = document.getElementById('productName').value;
     const quantity = parseInt(document.getElementById('quantity').value);
     const price = parseFloat(document.getElementById('unitPrice').value);
     const description = document.getElementById('productDescription').value;
 
-    const newProduct = {
-        id: Date.now(),
-        name,
-        stock: quantity,
-        price,
-        description
-    };
-
-    inventory.push(newProduct);
-    closeModal('addStockModal');
-    document.getElementById('addStockForm').reset();
-    loadStock();
-    updateDashboardStats();
-    alert('Stock added successfully!');
+    try {
+        await db.collection('products').add({
+            name,
+            description,
+            stock: quantity,
+            price,
+            imageUrl: '',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeModal('addStockModal');
+        document.getElementById('addStockForm').reset();
+        alert('Product added successfully!');
+    } catch (error) {
+        console.error('Error adding product:', error);
+        alert('Error adding product: ' + error.message);
+    }
 }
 
-function updateStock(id) {
+async function updateStock(id) {
     const newStock = prompt('Enter new stock quantity:');
     if (newStock !== null) {
         const item = inventory.find(item => item.id === id);
         if (item) {
-            item.stock = parseInt(newStock);
-            loadStock();
-            updateDashboardStats();
+            try {
+                await db.collection('products').doc(id).update({
+                    stock: parseInt(newStock)
+                });
+            } catch (error) {
+                console.error('Error updating stock:', error);
+                alert('Error updating stock: ' + error.message);
+            }
         }
     }
 }
 
-function deleteStock(id) {
+async function deleteStock(id) {
     if (confirm('Are you sure you want to delete this item?')) {
-        inventory = inventory.filter(item => item.id !== id);
-        loadStock();
-        updateDashboardStats();
+        try {
+            await db.collection('products').doc(id).delete();
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            alert('Error deleting product: ' + error.message);
+        }
     }
 }
 
@@ -267,12 +307,14 @@ function viewSale(id) {
     }
 }
 
-function completeSale(id) {
-    const sale = sales.find(s => s.id === id);
-    if (sale) {
-        sale.status = 'completed';
-        loadSales();
-        updateDashboardStats();
+async function completeSale(id) {
+    try {
+        await db.collection('orders').doc(id).update({
+            status: 'completed'
+        });
+    } catch (error) {
+        console.error('Error completing sale:', error);
+        alert('Error completing sale: ' + error.message);
     }
 }
 
@@ -303,14 +345,17 @@ function getDeliveryStatusClass(status) {
     }
 }
 
-function updateDeliveryStatus(id) {
+async function updateDeliveryStatus(id) {
     const newStatus = prompt('Enter new status (pending/in-transit/delivered):');
     if (newStatus && ['pending', 'in-transit', 'delivered'].includes(newStatus)) {
-        const delivery = deliveries.find(d => d.id === id);
-        if (delivery) {
-            delivery.status = newStatus;
-            loadDelivery();
-            updateDashboardStats();
+        try {
+            await db.collection('deliveries').doc(id).update({
+                status: newStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error updating delivery status:', error);
+            alert('Error updating delivery status: ' + error.message);
         }
     }
 }
@@ -325,7 +370,16 @@ function closeModal(modalId) {
 }
 
 // Logout function
-function logout() {
+async function logout() {
+    try {
+        await auth.signOut();
+        // Unsubscribe listeners
+        if (productsUnsubscribe) productsUnsubscribe();
+        if (ordersUnsubscribe) ordersUnsubscribe();
+        if (deliveriesUnsubscribe) deliveriesUnsubscribe();
+    } catch (error) {
+        console.error('Error signing out:', error);
+    }
     currentUser = null;
     localStorage.removeItem('currentUser');
     window.location.href = '../index.html';

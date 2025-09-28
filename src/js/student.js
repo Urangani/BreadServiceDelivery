@@ -3,14 +3,12 @@ let currentUser = null;
 let currentPage = 'dashboard';
 let cart = [];
 
-// Mock Data for student (only inventory needed)
-let inventory = [
-    { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches' },
-    { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread' },
-    { id: 3, name: 'Sourdough Bread', stock: 20, price: 25.00, description: 'Artisan sourdough bread' },
-    { id: 4, name: 'Rye Bread', stock: 15, price: 18.00, description: 'Traditional rye bread' },
-    { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette' }
-];
+let inventory = [];
+let sales = [];
+
+// Real-time listeners
+let productsUnsubscribe;
+let ordersUnsubscribe;
 
 // User roles and their accessible pages for student
 const userRoles = {
@@ -19,29 +17,51 @@ const userRoles = {
 
 // Initialize the application
 function init() {
-    // Check if user is logged in
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-        currentUser = JSON.parse(storedUser);
-        if (currentUser.role !== 'student') {
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                if (currentUser.role !== 'student') {
+                    window.location.href = '../index.html';
+                    return;
+                }
+                document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.name || currentUser.username}!`;
+                setupEventListeners();
+                setupNavigation();
+                setupRealtimeListeners();
+                loadPage('dashboard');
+            } else {
+                window.location.href = '../index.html';
+            }
+        } else {
             window.location.href = '../index.html';
-            return;
         }
-        document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.name || currentUser.username}!`;
-        setupNavigation();
-        loadPage('dashboard');
-    } else {
-        window.location.href = '../index.html';
-        return;
-    }
+    });
+}
 
-    // Load inventory from localStorage if available
-    const storedInventory = localStorage.getItem('inventory');
-    if (storedInventory) {
-        inventory = JSON.parse(storedInventory);
-    }
+// Set up real-time listeners for Firestore
+function setupRealtimeListeners() {
+    // Products listener (read-only for student)
+    productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
+        inventory = [];
+        snapshot.forEach((doc) => {
+            inventory.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'products') loadProducts();
+    });
 
-    setupEventListeners();
+    // Orders listener (own orders)
+    ordersUnsubscribe = db.collection('orders').where('userId', '==', currentUser.uid).onSnapshot((snapshot) => {
+        sales = [];
+        snapshot.forEach((doc) => {
+            sales.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'dashboard') {
+            updateDashboardStats();
+            loadRecentActivity();
+        }
+    });
 }
 
 // Event Listeners for student
@@ -125,15 +145,11 @@ function loadDashboard() {
 }
 
 function updateDashboardStats() {
-    // Get user's order history
-    const sales = JSON.parse(localStorage.getItem('sales') || '[]');
-    const userOrders = sales.filter(order => order.customer === currentUser.username);
-
-    // Calculate stats
-    const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0);
-    const totalOrders = userOrders.length;
-    const pendingOrders = userOrders.filter(order => order.status === 'pending').length;
-    const completedOrders = userOrders.filter(order => order.status === 'completed').length;
+    // Calculate stats from sales array
+    const totalSpent = sales.reduce((sum, order) => sum + order.total, 0);
+    const totalOrders = sales.length;
+    const pendingOrders = sales.filter(order => order.status === 'pending').length;
+    const completedOrders = sales.filter(order => order.status === 'completed').length;
 
     // Update stats display
     document.getElementById('totalRevenue').textContent = 'R' + totalSpent.toFixed(2);
@@ -144,11 +160,9 @@ function updateDashboardStats() {
 
 function loadRecentActivity() {
     const activityTable = document.getElementById('recentActivity');
-    const sales = JSON.parse(localStorage.getItem('sales') || '[]');
-    const userOrders = sales.filter(order => order.customer === currentUser.username);
 
     // Get recent orders (last 5)
-    const recentOrders = userOrders.slice(-5).reverse();
+    const recentOrders = sales.slice(-5).reverse();
 
     if (recentOrders.length === 0) {
         activityTable.innerHTML = '<tr><td colspan="4">No orders yet</td></tr>';
@@ -281,53 +295,56 @@ function loadPayment() {
     document.getElementById('finalTotal').textContent = total.toFixed(2);
 }
 
-function handlePayment(e) {
+async function handlePayment(e) {
     e.preventDefault();
 
-    // Create new order
-    const newOrder = {
-        id: Date.now(),
-        customer: currentUser.username,
-        items: cart.map(item => `${item.name} x${item.quantity}`).join(', '),
-        total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-        date: new Date().toISOString().split('T')[0],
-        status: 'pending'
-    };
-
-    // Add to sales (mock)
-    // Note: sales and deliveries are not defined here, as they are admin/staff, but for demo
-    let sales = JSON.parse(localStorage.getItem('sales') || '[]');
-    sales.push(newOrder);
-    localStorage.setItem('sales', JSON.stringify(sales));
-
-    // Add to deliveries
-    let deliveries = JSON.parse(localStorage.getItem('deliveries') || '[]');
     const address = e.target.querySelector('textarea').value;
-    deliveries.push({
-        id: newOrder.id,
-        customer: currentUser.username,
-        address: address,
-        items: newOrder.items,
-        status: 'pending',
-        assignedTo: 'Unassigned'
-    });
-    localStorage.setItem('deliveries', JSON.stringify(deliveries));
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    // Update inventory
-    cart.forEach(cartItem => {
-        const product = inventory.find(p => p.id === cartItem.id);
-        if (product) {
-            product.stock -= cartItem.quantity;
+    try {
+        // Create new order
+        const newOrder = {
+            userId: currentUser.uid,
+            customer: currentUser.username,
+            items: cart.map(item => `${item.name} x${item.quantity}`).join(', '),
+            total: total,
+            date: new Date().toISOString().split('T')[0],
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const orderRef = await db.collection('orders').add(newOrder);
+
+        // Add to deliveries
+        await db.collection('deliveries').add({
+            orderId: orderRef.id,
+            customer: currentUser.username,
+            address: address,
+            items: newOrder.items,
+            status: 'pending',
+            assignedTo: 'Unassigned',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update inventory
+        for (const cartItem of cart) {
+            const product = inventory.find(p => p.id === cartItem.id);
+            if (product) {
+                await db.collection('products').doc(cartItem.id).update({
+                    stock: product.stock - cartItem.quantity
+                });
+            }
         }
-    });
-    localStorage.setItem('inventory', JSON.stringify(inventory));
 
-    // Clear cart
-    cart = [];
+        // Clear cart
+        cart = [];
 
-    alert('Order placed successfully! Order ID: #' + newOrder.id);
-    loadPage('dashboard');
-    updateDashboardStats();
+        alert('Order placed successfully! Order ID: #' + orderRef.id);
+        loadPage('dashboard');
+    } catch (error) {
+        console.error('Error placing order:', error);
+        alert('Error placing order: ' + error.message);
+    }
 }
 
 // Modal functions
@@ -348,22 +365,32 @@ async function handleFeedbackSubmit(e) {
         mobile: formData.get('feedbackMobile'),
         email: formData.get('feedbackEmail'),
         message: formData.get('feedbackMessage'),
-        userId: currentUser.username,
-        timestamp: new Date()
+        userId: currentUser.uid,
+        username: currentUser.username,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     try {
-        await addDoc(collection(db, 'feedback'), feedback);
+        await db.collection('feedback').add(feedback);
         alert('Feedback submitted successfully!');
         closeModal('feedbackModal');
         e.target.reset();
     } catch (error) {
+        console.error('Error submitting feedback:', error);
         alert('Error submitting feedback: ' + error.message);
     }
 }
 
 // Logout function for student
-function logout() {
+async function logout() {
+    try {
+        await auth.signOut();
+        // Unsubscribe listeners
+        if (productsUnsubscribe) productsUnsubscribe();
+        if (ordersUnsubscribe) ordersUnsubscribe();
+    } catch (error) {
+        console.error('Error signing out:', error);
+    }
     currentUser = null;
     cart = [];
     localStorage.removeItem('currentUser');

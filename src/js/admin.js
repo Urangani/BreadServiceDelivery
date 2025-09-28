@@ -4,47 +4,17 @@ let currentPage = 'dashboard';
 let currentRole = 'admin';
 
 let inventory = [];
+let sales = [];
+let deliveries = [];
+let users = [];
 
-// Load inventory from localStorage on init
-function loadInventory() {
-    const stored = localStorage.getItem('unibreadInventory');
-    if (stored) {
-        inventory = JSON.parse(stored);
-    } else {
-        // Default mock data if no stored data
-        inventory = [
-            { id: 1, name: 'White Bread', stock: 50, price: 12.00, description: 'Fresh white bread, perfect for sandwiches', imageUrl: '' },
-            { id: 2, name: 'Whole Wheat Bread', stock: 30, price: 15.00, description: 'Healthy whole wheat bread', imageUrl: '' },
-            { id: 3, name: 'Sourdough Bread', stock: 20, price: 25.00, description: 'Artisan sourdough bread', imageUrl: '' },
-            { id: 4, name: 'Rye Bread', stock: 15, price: 18.00, description: 'Traditional rye bread', imageUrl: '' },
-            { id: 5, name: 'Baguette', stock: 25, price: 20.00, description: 'French baguette', imageUrl: '' }
-        ];
-        saveInventory();
-    }
-}
+// Real-time listeners
+let productsUnsubscribe;
+let ordersUnsubscribe;
+let deliveriesUnsubscribe;
+let usersUnsubscribe;
 
-// Save inventory to localStorage
-function saveInventory() {
-    localStorage.setItem('unibreadInventory', JSON.stringify(inventory));
-}
 
-let sales = [
-    { id: 1001, customer: 'John Smith', items: 'White Bread x2', total: 24.00, date: '2025-09-17', status: 'completed' },
-    { id: 1002, customer: 'Jane Doe', items: 'Sourdough x1', total: 25.00, date: '2025-09-17', status: 'pending' },
-    { id: 1003, customer: 'Mike Wilson', items: 'Whole Wheat x1, Rye x1', total: 33.00, date: '2025-09-16', status: 'completed' }
-];
-
-let deliveries = [
-    { id: 1001, customer: 'John Smith', address: 'Res A, Room 204', items: 'White Bread x2', status: 'delivered', assignedTo: 'Driver 1' },
-    { id: 1002, customer: 'Jane Doe', address: 'Res B, Room 105', items: 'Sourdough x1', status: 'pending', assignedTo: 'Driver 2' },
-    { id: 1003, customer: 'Mike Wilson', address: 'Off-campus: 123 Main St', items: 'Whole Wheat x1, Rye x1', status: 'in-transit', assignedTo: 'Driver 1' }
-];
-
-let users = [
-    { username: 'admin', role: 'admin', email: 'admin@unibread.com', status: 'active', lastLogin: '2025-09-17' },
-    { username: 'staff1', role: 'staff', email: 'staff1@unibread.com', status: 'active', lastLogin: '2025-09-17' },
-    { username: 'student1', role: 'student', email: 'student1@university.edu', status: 'active', lastLogin: '2025-09-16' }
-];
 
 // User roles and their accessible pages for admin
 const userRoles = {
@@ -53,21 +23,71 @@ const userRoles = {
 
 // Initialize the application
 function init() {
-    loadInventory();
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-        currentUser = JSON.parse(storedUser);
-        if (currentUser.role !== 'admin') {
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                if (currentUser.role !== 'admin') {
+                    window.location.href = '../index.html';
+                    return;
+                }
+                document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
+                setupEventListeners();
+                setupNavigation();
+                setupRealtimeListeners();
+                loadPage('dashboard');
+            } else {
+                window.location.href = '../index.html';
+            }
+        } else {
             window.location.href = '../index.html';
-            return;
         }
-        document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
-        setupEventListeners();
-        setupNavigation();
-        loadPage('dashboard');
-    } else {
-        window.location.href = '../index.html';
-    }
+    });
+}
+
+// Set up real-time listeners for Firestore
+function setupRealtimeListeners() {
+    // Products listener
+    productsUnsubscribe = db.collection('products').onSnapshot((snapshot) => {
+        inventory = [];
+        snapshot.forEach((doc) => {
+            inventory.push({ id: doc.id, ...doc.data() });
+        });
+        // Update UI if on relevant pages
+        if (currentPage === 'products') loadProducts();
+        if (currentPage === 'stock') loadStock();
+        updateDashboardStats();
+    });
+
+    // Orders listener
+    ordersUnsubscribe = db.collection('orders').onSnapshot((snapshot) => {
+        sales = [];
+        snapshot.forEach((doc) => {
+            sales.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'sales') loadSales();
+        updateDashboardStats();
+    });
+
+    // Deliveries listener
+    deliveriesUnsubscribe = db.collection('deliveries').onSnapshot((snapshot) => {
+        deliveries = [];
+        snapshot.forEach((doc) => {
+            deliveries.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'delivery') loadDelivery();
+        updateDashboardStats();
+    });
+
+    // Users listener
+    usersUnsubscribe = db.collection('users').onSnapshot((snapshot) => {
+        users = [];
+        snapshot.forEach((doc) => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+        if (currentPage === 'adminUsers') loadUsers();
+    });
 }
 
 // Event Listeners
@@ -255,7 +275,7 @@ function loadStock() {
     `).join('');
 }
 
-function handleAddStock(e) {
+async function handleAddStock(e) {
     e.preventDefault();
     const name = document.getElementById('productName').value;
     const description = document.getElementById('productDescription').value;
@@ -263,23 +283,22 @@ function handleAddStock(e) {
     const price = parseFloat(document.getElementById('unitPrice').value);
     const imageUrl = document.getElementById('imageUrl').value || '';
 
-    const newProduct = {
-        id: Date.now(),
-        name,
-        description,
-        stock: quantity,
-        price,
-        imageUrl
-    };
-
-    inventory.push(newProduct);
-    saveInventory();
-    closeModal('addStockModal');
-    document.getElementById('addStockForm').reset();
-    loadStock();
-    loadProducts();
-    updateDashboardStats();
-    alert('Product added successfully!');
+    try {
+        await db.collection('products').add({
+            name,
+            description,
+            stock: quantity,
+            price,
+            imageUrl,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeModal('addStockModal');
+        document.getElementById('addStockForm').reset();
+        alert('Product added successfully!');
+    } catch (error) {
+        console.error('Error adding product:', error);
+        alert('Error adding product: ' + error.message);
+    }
 }
 
 function editProduct(id) {
@@ -295,65 +314,74 @@ function editProduct(id) {
     }
 }
 
-function handleEditProduct(e) {
+async function handleEditProduct(e) {
     e.preventDefault();
-    const id = parseInt(document.getElementById('editProductId').value);
+    const id = document.getElementById('editProductId').value;
     const name = document.getElementById('editProductName').value;
     const description = document.getElementById('editProductDescription').value;
     const stock = parseInt(document.getElementById('editQuantity').value);
     const price = parseFloat(document.getElementById('editUnitPrice').value);
     const imageUrl = document.getElementById('editImageUrl').value || '';
 
-    const item = inventory.find(item => item.id === id);
-    if (item) {
-        item.name = name;
-        item.description = description;
-        item.stock = stock;
-        item.price = price;
-        item.imageUrl = imageUrl;
-        saveInventory();
+    try {
+        await db.collection('products').doc(id).update({
+            name,
+            description,
+            stock,
+            price,
+            imageUrl
+        });
         closeModal('editProductModal');
         document.getElementById('editProductForm').reset();
-        loadStock();
-        loadProducts();
-        updateDashboardStats();
         alert('Product updated successfully!');
+    } catch (error) {
+        console.error('Error updating product:', error);
+        alert('Error updating product: ' + error.message);
     }
 }
 
-function addStock(id, amount = 1) {
+async function addStock(id, amount = 1) {
     const item = inventory.find(item => item.id === id);
     if (item) {
-        item.stock += amount;
-        saveInventory();
-        loadStock();
-        updateDashboardStats();
-        alert(`Added ${amount} to stock. New stock: ${item.stock}`);
+        try {
+            await db.collection('products').doc(id).update({
+                stock: item.stock + amount
+            });
+            alert(`Added ${amount} to stock. New stock: ${item.stock + amount}`);
+        } catch (error) {
+            console.error('Error updating stock:', error);
+            alert('Error updating stock: ' + error.message);
+        }
     }
 }
 
-function removeStock(id, amount = 1) {
+async function removeStock(id, amount = 1) {
     const item = inventory.find(item => item.id === id);
     if (item) {
         if (item.stock >= amount) {
-            item.stock -= amount;
-            saveInventory();
-            loadStock();
-            updateDashboardStats();
-            alert(`Removed ${amount} from stock. New stock: ${item.stock}`);
+            try {
+                await db.collection('products').doc(id).update({
+                    stock: item.stock - amount
+                });
+                alert(`Removed ${amount} from stock. New stock: ${item.stock - amount}`);
+            } catch (error) {
+                console.error('Error updating stock:', error);
+                alert('Error updating stock: ' + error.message);
+            }
         } else {
             alert('Insufficient stock to remove.');
         }
     }
 }
 
-function deleteStock(id) {
+async function deleteStock(id) {
     if (confirm('Are you sure you want to delete this product?')) {
-        inventory = inventory.filter(item => item.id !== id);
-        saveInventory();
-        loadStock();
-        loadProducts();
-        updateDashboardStats();
+        try {
+            await db.collection('products').doc(id).delete();
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            alert('Error deleting product: ' + error.message);
+        }
     }
 }
 
@@ -383,12 +411,14 @@ function viewSale(id) {
     }
 }
 
-function completeSale(id) {
-    const sale = sales.find(s => s.id === id);
-    if (sale) {
-        sale.status = 'completed';
-        loadSales();
-        updateDashboardStats();
+async function completeSale(id) {
+    try {
+        await db.collection('orders').doc(id).update({
+            status: 'completed'
+        });
+    } catch (error) {
+        console.error('Error completing sale:', error);
+        alert('Error completing sale: ' + error.message);
     }
 }
 
@@ -419,14 +449,17 @@ function getDeliveryStatusClass(status) {
     }
 }
 
-function updateDeliveryStatus(id) {
+async function updateDeliveryStatus(id) {
     const newStatus = prompt('Enter new status (pending/in-transit/delivered):');
     if (newStatus && ['pending', 'in-transit', 'delivered'].includes(newStatus)) {
-        const delivery = deliveries.find(d => d.id === id);
-        if (delivery) {
-            delivery.status = newStatus;
-            loadDelivery();
-            updateDashboardStats();
+        try {
+            await db.collection('deliveries').doc(id).update({
+                status: newStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error updating delivery status:', error);
+            alert('Error updating delivery status: ' + error.message);
         }
     }
 }
@@ -449,42 +482,60 @@ function loadUsers() {
     `).join('');
 }
 
-function handleAddUser(e) {
+async function handleAddUser(e) {
     e.preventDefault();
     const username = document.getElementById('newUsername').value;
     const email = document.getElementById('newEmail').value;
     const role = document.getElementById('newUserRole').value;
 
-    const newUser = {
-        username,
-        email,
-        role,
-        status: 'active',
-        lastLogin: 'Never'
-    };
+    try {
+        // Add to Firestore with auto-generated ID
+        await db.collection('users').add({
+            username,
+            email,
+            role,
+            status: 'active',
+            lastLogin: null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-    users.push(newUser);
-    closeModal('addUserModal');
-    document.getElementById('addUserForm').reset();
-    loadUsers();
-    alert('User added successfully!');
+        closeModal('addUserModal');
+        document.getElementById('addUserForm').reset();
+        alert('User added successfully! Note: User needs to create Firebase Auth account separately.');
+    } catch (error) {
+        console.error('Error adding user:', error);
+        alert('Error adding user: ' + error.message);
+    }
 }
 
-function editUser(username) {
+async function editUser(username) {
     const user = users.find(u => u.username === username);
     if (user) {
         const newRole = prompt('Enter new role (admin/staff/student):', user.role);
         if (newRole && ['admin', 'staff', 'student'].includes(newRole)) {
-            user.role = newRole;
-            loadUsers();
+            try {
+                await db.collection('users').doc(user.id).update({
+                    role: newRole
+                });
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Error updating user: ' + error.message);
+            }
         }
     }
 }
 
-function deleteUser(username) {
+async function deleteUser(username) {
     if (confirm(`Are you sure you want to delete user: ${username}?`)) {
-        users = users.filter(u => u.username !== username);
-        loadUsers();
+        const user = users.find(u => u.username === username);
+        if (user) {
+            try {
+                await db.collection('users').doc(user.id).delete();
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Error deleting user: ' + error.message);
+            }
+        }
     }
 }
 
@@ -498,7 +549,17 @@ function closeModal(modalId) {
 }
 
 // Logout function
-function logout() {
+async function logout() {
+    try {
+        await auth.signOut();
+        // Unsubscribe listeners
+        if (productsUnsubscribe) productsUnsubscribe();
+        if (ordersUnsubscribe) ordersUnsubscribe();
+        if (deliveriesUnsubscribe) deliveriesUnsubscribe();
+        if (usersUnsubscribe) usersUnsubscribe();
+    } catch (error) {
+        console.error('Error signing out:', error);
+    }
     currentUser = null;
     localStorage.removeItem('currentUser');
     window.location.href = '../index.html';
