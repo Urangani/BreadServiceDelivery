@@ -187,13 +187,16 @@ function loadProducts() {
     const productGrid = document.getElementById('productGrid');
     productGrid.innerHTML = inventory.map(product => `
         <div class="product-card">
-            <div class="product-image">🍞</div>
+            <div class="product-image">
+                ${product.imageUrl ? `<img src="${product.imageUrl}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">` : ''}
+                <span style="display: ${product.imageUrl ? 'none' : 'block'}">🍞</span>
+            </div>
             <div class="product-info">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
                 <div class="product-price">R${product.price.toFixed(2)}</div>
                 <div class="stock-badge ${getStockClass(product.stock)}">${getStockStatus(product.stock)}</div>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="addToCart(${product.id})">Add to Cart</button>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="addToCart('${product.id}')">Add to Cart</button>
             </div>
         </div>
     `).join('');
@@ -249,10 +252,10 @@ function loadCart() {
                 <p>R${item.price.toFixed(2)} each</p>
             </div>
             <div class="quantity-controls">
-                <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)">-</button>
+                <button class="quantity-btn" onclick="updateCartQuantity('${item.id}', -1)">-</button>
                 <span style="margin: 0 1rem;">${item.quantity}</span>
-                <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)">+</button>
-                <button class="btn btn-danger" style="margin-left: 1rem;" onclick="removeFromCart(${item.id})">Remove</button>
+                <button class="quantity-btn" onclick="updateCartQuantity('${item.id}', 1)">+</button>
+                <button class="btn btn-danger" style="margin-left: 1rem;" onclick="removeFromCart('${item.id}')">Remove</button>
             </div>
             <div>
                 <strong>R${(item.price * item.quantity).toFixed(2)}</strong>

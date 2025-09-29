@@ -33,6 +33,7 @@ function init() {
                     return;
                 }
                 document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.username}!`;
+                await seedDefaultProducts();
                 setupEventListeners();
                 setupNavigation();
                 setupRealtimeListeners();
@@ -44,6 +45,75 @@ function init() {
             window.location.href = '../index.html';
         }
     });
+}
+
+// Seed default products if none exist
+async function seedDefaultProducts() {
+    try {
+        const productsSnapshot = await db.collection('products').get();
+        if (productsSnapshot.empty) {
+            const defaultProducts = [
+                {
+                    name: 'Albany White',
+                    description: 'Fresh Albany white bread loaf',
+                    stock: 50,
+                    price: 15.99,
+                    imageUrl: '/src/images/products/albany%20white.jpeg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: 'Albany Brown',
+                    description: 'Nutritious Albany brown bread loaf',
+                    stock: 40,
+                    price: 17.99,
+                    imageUrl: '/src/images/products/albany.jpeg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: 'Brown Loaf',
+                    description: 'Classic brown bread loaf',
+                    stock: 30,
+                    price: 12.99,
+                    imageUrl: '/src/images/products/brown%20loaf.webp',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: 'Sasko Brown',
+                    description: 'Premium Sasko brown bread',
+                    stock: 45,
+                    price: 18.99,
+                    imageUrl: '/src/images/products/sasko%20brown.jpg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: 'Sasko White',
+                    description: 'Premium Sasko white bread',
+                    stock: 55,
+                    price: 16.99,
+                    imageUrl: '/src/images/products/sasko%20white.jpg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: 'White Loaf',
+                    description: 'Traditional white bread loaf',
+                    stock: 35,
+                    price: 13.99,
+                    imageUrl: '/src/images/products/white%20loaf.webp',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }
+            ];
+
+            const batch = db.batch();
+            defaultProducts.forEach(product => {
+                const docRef = db.collection('products').doc();
+                batch.set(docRef, product);
+            });
+            await batch.commit();
+            console.log('Default products seeded successfully');
+        }
+    } catch (error) {
+        console.error('Error seeding default products:', error);
+    }
 }
 
 // Set up real-time listeners for Firestore

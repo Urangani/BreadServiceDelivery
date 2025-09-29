@@ -1,0 +1,83 @@
+# UniBread: University Bread Sales Delivery System
+
+## Project Overview
+UniBread is a comprehensive web-based application designed to streamline bread sales and delivery services within a university environment. The system provides role-based access for administrators, staff, and students, enabling efficient management of inventory, sales, deliveries, and user interactions. Built using modern web technologies, UniBread leverages Firebase for authentication and real-time database management to ensure a seamless user experience.
+
+## Features
+
+### Authentication and User Management
+- **Multi-Role Login System**: Users can log in as Admin, Staff, or Student with role-based access control.
+- **Signup Functionality**: New users can register with email and password, defaulting to student role.
+- **Google Sign-In Integration**: Students can authenticate using Google accounts for convenience.
+- **Secure Authentication**: Utilizes Firebase Authentication for secure user management.
+
+### Admin Panel
+- **Dashboard**: Real-time statistics including total revenue, sales count, stock levels, and pending deliveries.
+- **Product Management**: View, add, edit, and delete bread products with descriptions, prices, and images.
+- **Stock Management**: Monitor inventory levels, add/remove stock, and track total value.
+- **Sales Oversight**: View all orders, track order status, and complete transactions.
+- **Delivery Management**: Monitor delivery status and assign staff to deliveries.
+- **User Management**: Add, edit, and delete users across all roles.
+
+### Staff Panel
+- **Dashboard**: Access to key metrics and recent activity.
+- **Product Viewing**: Browse available bread products.
+- **Stock Management**: Add new stock items and update existing inventory.
+- **Sales and Delivery Tracking**: View and manage orders and deliveries.
+
+### Student Portal
+- **Personal Dashboard**: Track total spending, order count, and order status.
+- **Product Browsing**: View available bread selection with prices and stock status.
+- **Shopping Cart**: Add items to cart, view total, and proceed to checkout.
+- **Payment Processing**: Multiple payment options including card, EFT, and cash on delivery.
+- **Order History**: View past orders and their status.
+- **Feedback System**: Submit feedback for service improvement.
+
+## Technology Stack
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Backend/Database**: Firebase Firestore (NoSQL cloud database)
+- **Authentication**: Firebase Authentication
+- **Real-Time Updates**: Firebase real-time listeners for live data synchronization
+- **Hosting**: Static web hosting (can be deployed on Firebase Hosting or similar)
+
+## Implementation Details
+
+### Architecture
+The application follows a modular architecture with separate HTML pages for each user role and corresponding JavaScript files for functionality. Firebase serves as the backend, providing authentication and data storage.
+
+### Key Components
+1. **Firebase Configuration**: Centralized Firebase app initialization with API keys and project settings.
+2. **Authentication Flow**: Handles login, signup, and role-based redirection using Firebase Auth and Firestore user documents.
+3. **Real-Time Data Management**: Uses Firestore onSnapshot listeners to provide live updates across all user interfaces.
+4. **Role-Based Access Control**: Navigation and features are dynamically generated based on user roles stored in Firestore.
+5. **CRUD Operations**: Comprehensive Create, Read, Update, Delete functionality for products, users, orders, and deliveries.
+
+### Data Structure
+- **Users Collection**: Stores user information including username, email, role, status, and login timestamps.
+- **Products Collection**: Contains product details such as name, description, stock, price, and image URLs.
+- **Orders Collection**: Tracks sales data including customer info, items, total, date, and status.
+- **Deliveries Collection**: Manages delivery information with order details, addresses, and assignment status.
+
+## Challenges and Solutions
+1. **Real-Time Synchronization**: Implemented Firebase onSnapshot listeners to ensure all users see live updates without manual refreshing.
+2. **Role-Based Security**: Used Firestore document structure and client-side checks to enforce access control.
+3. **State Management**: Utilized localStorage for session management and Firestore for persistent data storage.
+4. **Cross-Device Compatibility**: Designed responsive UI using CSS to work across different screen sizes.
+
+## Future Enhancements
+- Implement push notifications for order updates
+- Add advanced analytics and reporting features
+- Integrate with payment gateways for secure transactions
+- Develop mobile applications for iOS and Android
+- Implement AI-powered inventory prediction
+
+## Conclusion
+UniBread demonstrates the power of modern web technologies in creating efficient, scalable business solutions. By leveraging Firebase's robust backend services, the application provides a seamless experience for managing university bread sales while maintaining security and real-time capabilities. This project showcases practical application of full-stack web development skills and database management in a real-world scenario.
+
+## How to Run the Project
+1. Clone the repository
+2. Set up a Firebase project and update the configuration in `src/js/firebase-config.js`
+3. Enable Authentication (Email/Password and Google) and Firestore in Firebase Console
+4. Open `index.html` in a web browser or serve via a local server
+5. Sign up or log in to access the respective panels
+
