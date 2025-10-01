@@ -58,7 +58,7 @@ async function seedDefaultProducts() {
                     description: 'Fresh Albany white bread loaf',
                     stock: 50,
                     price: 15.99,
-                    imageUrl: '/src/images/products/albany%20white.jpeg',
+                    imageUrl: 'images/products/albany%20white.jpeg',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
                 {
@@ -66,7 +66,7 @@ async function seedDefaultProducts() {
                     description: 'Nutritious Albany brown bread loaf',
                     stock: 40,
                     price: 17.99,
-                    imageUrl: '/src/images/products/albany.jpeg',
+                    imageUrl: 'images/products/albany.jpeg',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
                 {
@@ -74,7 +74,7 @@ async function seedDefaultProducts() {
                     description: 'Classic brown bread loaf',
                     stock: 30,
                     price: 12.99,
-                    imageUrl: '/src/images/products/brown%20loaf.webp',
+                    imageUrl: 'images/products/brown%20loaf.webp',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
                 {
@@ -82,7 +82,7 @@ async function seedDefaultProducts() {
                     description: 'Premium Sasko brown bread',
                     stock: 45,
                     price: 18.99,
-                    imageUrl: '/src/images/products/sasko%20brown.jpg',
+                    imageUrl: 'images/products/sasko%20brown.jpg',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
                 {
@@ -90,7 +90,7 @@ async function seedDefaultProducts() {
                     description: 'Premium Sasko white bread',
                     stock: 55,
                     price: 16.99,
-                    imageUrl: '/src/images/products/sasko%20white.jpg',
+                    imageUrl: 'images/products/sasko%20white.jpg',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
                 {
@@ -98,7 +98,7 @@ async function seedDefaultProducts() {
                     description: 'Traditional white bread loaf',
                     stock: 35,
                     price: 13.99,
-                    imageUrl: '/src/images/products/white%20loaf.webp',
+                    imageUrl: 'images/products/white%20loaf.webp',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 }
             ];
@@ -556,11 +556,16 @@ async function handleAddUser(e) {
     e.preventDefault();
     const username = document.getElementById('newUsername').value;
     const email = document.getElementById('newEmail').value;
+    const password = document.getElementById('newPassword').value;
     const role = document.getElementById('newUserRole').value;
 
     try {
-        // Add to Firestore with auto-generated ID
-        await db.collection('users').add({
+        // Create Firebase Auth account
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+
+        // Add to Firestore using the UID as document ID
+        await db.collection('users').doc(uid).set({
             username,
             email,
             role,
@@ -571,7 +576,11 @@ async function handleAddUser(e) {
 
         closeModal('addUserModal');
         document.getElementById('addUserForm').reset();
-        alert('User added successfully! Note: User needs to create Firebase Auth account separately.');
+
+        // Sign out since the new user is now signed in
+        await auth.signOut();
+
+        alert('User added successfully! Firebase Auth account created. You have been signed out. Please sign back in as admin.');
     } catch (error) {
         console.error('Error adding user:', error);
         alert('Error adding user: ' + error.message);

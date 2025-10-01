@@ -1,28 +1,3 @@
-// Google Sign-In callback
-window.handleGoogleSignIn = async function(response) {
-    try {
-        const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
-        const result = await auth.signInWithCredential(credential);
-        const user = result.user;
-
-        // Create/update user doc in Firestore
-        await db.collection('users').doc(user.uid).set({
-            username: user.email.split('@')[0],
-            email: user.email,
-            role: 'student', // Default for Google
-            status: 'active',
-            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        localStorage.setItem('currentUser', JSON.stringify({ uid: user.uid, role: 'student', username: user.email.split('@')[0] }));
-        window.location.href = 'src/student.html';
-    } catch (error) {
-        console.error('Google Sign-In error:', error);
-        alert('Google Sign-In failed. Please try again.');
-    }
-};
-
 // Login handling with Firebase Auth
 async function handleLogin(e) {
     e.preventDefault();

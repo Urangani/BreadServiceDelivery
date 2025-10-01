@@ -1,0 +1,3 @@
+- [x] Remove Google Sign-In script from index.html head
+- [x] Remove Google sign-in div from index.html
+- [x] Remove handleGoogleSignIn function from src/js/index.js
