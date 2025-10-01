@@ -37,6 +37,8 @@ async function handleLogin(e) {
                 window.location.href = 'src/admin.html';
             } else if (role === 'staff') {
                 window.location.href = 'src/staff.html';
+            } else if (role === 'driver') {
+                window.location.href = 'src/driver.html';
             } else if (role === 'student') {
                 window.location.href = 'src/student.html';
             }

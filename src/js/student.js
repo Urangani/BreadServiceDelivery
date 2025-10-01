@@ -165,18 +165,20 @@ function loadRecentActivity() {
     const recentOrders = sales.slice(-5).reverse();
 
     if (recentOrders.length === 0) {
-        activityTable.innerHTML = '<tr><td colspan="4">No orders yet</td></tr>';
+        activityTable.innerHTML = '<tr><td colspan="5">No orders yet</td></tr>';
         return;
     }
 
     activityTable.innerHTML = recentOrders.map(order => {
         const date = new Date(order.date).toLocaleDateString();
+        const actions = order.status === 'delivered' ? `<button class="btn btn-success" onclick="confirmReceipt('${order.id}')">Confirm Receipt</button>` : '';
         return `
             <tr>
                 <td>${date}</td>
                 <td>Order #${order.id}</td>
                 <td>R${order.total.toFixed(2)}</td>
                 <td><span class="stock-badge ${order.status === 'completed' ? 'stock-in' : 'stock-low'}">${order.status}</span></td>
+                <td>${actions}</td>
             </tr>
         `;
     }).join('');
@@ -301,16 +303,68 @@ function loadPayment() {
 async function handlePayment(e) {
     e.preventDefault();
 
-    const address = e.target.querySelector('textarea').value;
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const cardNumber = document.getElementById('cardNumber').value.trim();
+    const expiryDate = document.getElementById('expiryDate').value.trim();
+    const cvv = document.getElementById('cvv').value.trim();
+    const address = document.getElementById('deliveryAddress').value.trim();
+    const specialInstructions = document.getElementById('specialInstructions').value.trim();
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+    // Basic validation
+    if (!paymentMethod) {
+        alert('Please select a payment method.');
+        return;
+    }
+    if (!address) {
+        alert('Please enter a delivery address.');
+        return;
+    }
+    if (paymentMethod === 'card') {
+        if (!cardNumber || !expiryDate || !cvv) {
+            alert('Please fill in all card details.');
+            return;
+        }
+        // Simple card number validation (length check)
+        if (cardNumber.replace(/\s+/g, '').length < 13 || cardNumber.replace(/\s+/g, '').length > 19) {
+            alert('Please enter a valid card number.');
+            return;
+        }
+        // Simple expiry date validation MM/YY
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) {
+            alert('Please enter a valid expiry date in MM/YY format.');
+            return;
+        }
+        // Simple CVV validation (3 or 4 digits)
+        if (!/^\d{3,4}$/.test(cvv)) {
+            alert('Please enter a valid CVV.');
+            return;
+        }
+    }
+
+    // Confirmation alert with order summary
+    const confirmMsg = `Please confirm your order:\n\n` +
+        `Items: ${cart.map(item => `${item.name} x${item.quantity}`).join(', ')}\n` +
+        `Total: R${total.toFixed(2)}\n` +
+        `Payment Method: ${paymentMethod}\n` +
+        `Delivery Address: ${address}\n` +
+        `Special Instructions: ${specialInstructions || 'None'}\n\n` +
+        `Proceed with the order?`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
     try {
-        // Create new order
+        // Create new order with payment info
         const newOrder = {
             userId: currentUser.uid,
             customer: currentUser.username,
             items: cart.map(item => `${item.name} x${item.quantity}`).join(', '),
             total: total,
+            paymentMethod: paymentMethod,
+            deliveryAddress: address,
+            specialInstructions: specialInstructions,
             date: new Date().toISOString().split('T')[0],
             status: 'pending',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -381,6 +435,30 @@ async function handleFeedbackSubmit(e) {
     } catch (error) {
         console.error('Error submitting feedback:', error);
         alert('Error submitting feedback: ' + error.message);
+    }
+}
+
+// Confirm receipt function
+async function confirmReceipt(orderId) {
+    if (confirm('Confirm that you have received this order?')) {
+        try {
+            // Update order status to completed
+            await db.collection('orders').doc(orderId).update({
+                status: 'completed',
+                confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Optionally update delivery status to confirmed
+            await db.collection('deliveries').doc(orderId).update({
+                status: 'confirmed',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            alert('Order receipt confirmed!');
+        } catch (error) {
+            console.error('Error confirming receipt:', error);
+            alert('Error confirming receipt: ' + error.message);
+        }
     }
 }
 

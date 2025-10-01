@@ -504,7 +504,8 @@ function loadDelivery() {
             <td><span class="stock-badge ${getDeliveryStatusClass(delivery.status)}">${delivery.status}</span></td>
             <td>${delivery.assignedTo}</td>
             <td>
-                <button class="btn btn-secondary" onclick="updateDeliveryStatus(${delivery.id})">Update Status</button>
+                <button class="btn btn-secondary" onclick="assignDriver('${delivery.id}')">Assign Driver</button>
+                <button class="btn btn-primary" onclick="updateDeliveryStatus('${delivery.id}')">Update Status</button>
             </td>
         </tr>
     `).join('');
@@ -516,6 +517,27 @@ function getDeliveryStatusClass(status) {
         case 'in-transit': return 'stock-low';
         case 'pending': return 'stock-out';
         default: return 'stock-low';
+    }
+}
+
+async function assignDriver(id) {
+    const drivers = users.filter(u => u.role === 'driver');
+    if (drivers.length === 0) {
+        alert('No drivers available.');
+        return;
+    }
+    const driverOptions = drivers.map(d => d.username).join(', ');
+    const selectedDriver = prompt(`Select driver (${driverOptions}):`);
+    if (selectedDriver && drivers.find(d => d.username === selectedDriver)) {
+        try {
+            await db.collection('deliveries').doc(id).update({
+                assignedTo: selectedDriver,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error assigning driver:', error);
+            alert('Error assigning driver: ' + error.message);
+        }
     }
 }
 
@@ -590,8 +612,8 @@ async function handleAddUser(e) {
 async function editUser(username) {
     const user = users.find(u => u.username === username);
     if (user) {
-        const newRole = prompt('Enter new role (admin/staff/student):', user.role);
-        if (newRole && ['admin', 'staff', 'student'].includes(newRole)) {
+        const newRole = prompt('Enter new role (admin/staff/driver/student):', user.role);
+        if (newRole && ['admin', 'staff', 'driver', 'student'].includes(newRole)) {
             try {
                 await db.collection('users').doc(user.id).update({
                     role: newRole
