@@ -521,23 +521,23 @@ function getDeliveryStatusClass(status) {
 }
 
 async function assignDriver(id) {
-    const drivers = users.filter(u => u.role === 'driver');
+    // Automatically assign an available driver
+    const drivers = users.filter(u => u.role === 'driver' && u.available === true);
     if (drivers.length === 0) {
-        alert('No drivers available.');
+        alert('No available drivers at the moment.');
         return;
     }
-    const driverOptions = drivers.map(d => d.username).join(', ');
-    const selectedDriver = prompt(`Select driver (${driverOptions}):`);
-    if (selectedDriver && drivers.find(d => d.username === selectedDriver)) {
-        try {
-            await db.collection('deliveries').doc(id).update({
-                assignedTo: selectedDriver,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (error) {
-            console.error('Error assigning driver:', error);
-            alert('Error assigning driver: ' + error.message);
-        }
+    // Assign the first available driver
+    const selectedDriver = drivers[0].username;
+    try {
+        await db.collection('deliveries').doc(id).update({
+            assignedTo: selectedDriver,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert(`Driver ${selectedDriver} assigned automatically.`);
+    } catch (error) {
+        console.error('Error assigning driver:', error);
+        alert('Error assigning driver: ' + error.message);
     }
 }
 

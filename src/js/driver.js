@@ -50,11 +50,35 @@ function setupRealtimeListeners() {
             loadDeliveries();
         }
     });
+
+    // Availability listener
+    db.collection('users').doc(currentUser.uid).onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            const availabilityToggle = document.getElementById('availabilityToggle');
+            if (availabilityToggle) {
+                availabilityToggle.checked = data.available || false;
+            }
+        }
+    });
 }
 
 // Event Listeners
 function setupEventListeners() {
-    // None for now
+    // Availability toggle
+    const availabilityToggle = document.getElementById('availabilityToggle');
+    if (availabilityToggle) {
+        availabilityToggle.addEventListener('change', async function() {
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    available: this.checked
+                });
+            } catch (error) {
+                console.error('Error updating availability:', error);
+                alert('Error updating availability: ' + error.message);
+            }
+        });
+    }
 }
 
 // Setup navigation for driver
@@ -154,11 +178,20 @@ async function markDelivered(id) {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // Update order status to delivered
-            await db.collection('orders').doc(id).update({
-                status: 'delivered',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            // Find the order associated with this delivery by orderId field
+            const deliveryDoc = await db.collection('deliveries').doc(id).get();
+            if (deliveryDoc.exists) {
+                const deliveryData = deliveryDoc.data();
+                const orderId = deliveryData.orderId || id; // fallback to id if orderId missing
+
+                // Update order status to delivered
+                await db.collection('orders').doc(orderId).update({
+                    status: 'delivered',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                console.warn('Delivery document not found for id:', id);
+            }
 
             alert('Delivery marked as completed!');
         } catch (error) {

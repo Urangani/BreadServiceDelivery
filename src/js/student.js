@@ -12,8 +12,76 @@ let ordersUnsubscribe;
 
 // User roles and their accessible pages for student
 const userRoles = {
-    student: ['dashboard', 'products', 'cart', 'payment']
+    student: ['dashboard', 'products', 'cart', 'payment', 'orderTracking']
 };
+
+// Seed default products if none exist
+async function seedDefaultProducts() {
+    try {
+        const productsSnapshot = await db.collection('products').get();
+        if (productsSnapshot.empty) {
+            const defaultProducts = [
+                {
+                    name: "Albany White",
+                    description: "Fresh Albany white bread",
+                    stock: 50,
+                    price: 15.99,
+                    imageUrl: 'images/products/albany white.jpeg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: "Albany",
+                    description: "Fresh Albany bread",
+                    stock: 50,
+                    price: 17.99,
+                    imageUrl: 'images/products/albany.jpeg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: "Brown Loaf",
+                    description: "Fresh brown loaf",
+                    stock: 50,
+                    price: 12.99,
+                    imageUrl: 'images/products/brown loaf.webp',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: "Sasko Brown",
+                    description: "Fresh Sasko brown bread",
+                    stock: 50,
+                    price: 18.99,
+                    imageUrl: 'images/products/sasko brown.jpg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: "Sasko White",
+                    description: "Fresh Sasko white bread",
+                    stock: 50,
+                    price: 16.99,
+                    imageUrl: 'images/products/sasko white.jpg',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                {
+                    name: "White Loaf",
+                    description: "Fresh white loaf",
+                    stock: 50,
+                    price: 13.99,
+                    imageUrl: 'images/products/white loaf.webp',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }
+            ];
+            const batch = db.batch();
+            defaultProducts.forEach(product => {
+                const docRef = db.collection('products').doc();
+                batch.set(docRef, product);
+            });
+            await batch.commit();
+            console.log('Default products seeded successfully');
+        }
+    } catch (error) {
+        console.error('Error seeding default products:', error);
+    }
+}
 
 // Initialize the application
 function init() {
@@ -27,6 +95,7 @@ function init() {
                     return;
                 }
                 document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.name || currentUser.username}!`;
+                await seedDefaultProducts();
                 setupEventListeners();
                 setupNavigation();
                 setupRealtimeListeners();
@@ -89,7 +158,8 @@ function setupNavigation() {
         dashboard: 'Dashboard',
         products: 'Products',
         cart: 'Cart',
-        payment: 'Payment'
+        payment: 'Payment',
+        orderTracking: 'Order Tracking'
     };
 
     pages.forEach(page => {
@@ -101,7 +171,6 @@ function setupNavigation() {
     });
 }
 
-// Load page content for student
 function loadPage(pageName) {
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
@@ -109,25 +178,47 @@ function loadPage(pageName) {
     });
 
     // Show selected page
-    document.getElementById(pageName).classList.add('active');
+    const pageElement = document.getElementById(pageName);
+    if (pageElement) {
+        pageElement.classList.add('active');
+    }
 
     // Update navigation
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    if (event && event.target) {
-        event.target.classList.add('active');
+    const navTabs = document.getElementById('navTabs');
+    if (navTabs) {
+        navTabs.style.display = 'flex';
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        if (event && event.target) {
+            event.target.classList.add('active');
+        }
     }
 
     currentPage = pageName;
+    loadPageContent(pageName);
+}
 
-    // Load page-specific content
+function loadPageContent(pageName) {
     switch(pageName) {
         case 'dashboard':
             loadDashboard();
             break;
         case 'products':
-            loadProducts();
+            if (inventory.length === 0) {
+                // Fetch products if not already loaded
+                db.collection('products').get().then(snapshot => {
+                    inventory = [];
+                    snapshot.forEach(doc => {
+                        inventory.push({ id: doc.id, ...doc.data() });
+                    });
+                    loadProducts();
+                }).catch(error => {
+                    console.error('Error fetching products:', error);
+                });
+            } else {
+                loadProducts();
+            }
             break;
         case 'cart':
             loadCart();
@@ -135,7 +226,40 @@ function loadPage(pageName) {
         case 'payment':
             loadPayment();
             break;
+        case 'orderTracking':
+            loadOrderTracking();
+            break;
     }
+}
+
+function loadOrderTracking() {
+    const orderTrackingTable = document.getElementById('orderTrackingTable');
+    // Sort sales by date descending (most recent first)
+    const sortedSales = sales.slice().sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.toDate() : new Date(a.date);
+        const dateB = b.createdAt ? b.createdAt.toDate() : new Date(b.date);
+        return dateB - dateA;
+    });
+
+    if (sortedSales.length === 0) {
+        orderTrackingTable.innerHTML = '<tr><td colspan="6">No orders found</td></tr>';
+        return;
+    }
+
+    orderTrackingTable.innerHTML = sortedSales.map(order => {
+        const date = new Date(order.date).toLocaleDateString();
+        const actions = order.status === 'delivered' ? `<button class="btn btn-success" onclick="confirmReceipt('${order.id}')">Confirm Receipt</button>` : 'N/A';
+        return `
+            <tr>
+                <td>${date}</td>
+                <td>Order #${order.id}</td>
+                <td>${order.items}</td>
+                <td>R${order.total.toFixed(2)}</td>
+                <td><span class="stock-badge ${getOrderStatusClass(order.status)}">${order.status}</span></td>
+                <td>${actions}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // Dashboard functions
