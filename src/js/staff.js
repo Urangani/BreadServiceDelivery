@@ -221,8 +221,8 @@ function loadStock() {
             <td>R${(item.stock * item.price).toFixed(2)}</td>
             <td><span class="stock-badge ${getStockClass(item.stock)}">${getStockStatus(item.stock)}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="updateStock(${item.id})">Update</button>
-                <button class="btn btn-danger" onclick="deleteStock(${item.id})">Delete</button>
+                <button class="btn btn-secondary" onclick="updateStock('${item.id}')">Update</button>
+                <button class="btn btn-danger" onclick="deleteStock('${item.id}')">Delete</button>
             </td>
         </tr>
     `).join('');
@@ -293,8 +293,8 @@ function loadSales() {
             <td>${sale.date}</td>
             <td><span class="stock-badge ${sale.status === 'completed' ? 'stock-in' : 'stock-low'}">${sale.status}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="viewSale(${sale.id})">View</button>
-                ${sale.status === 'pending' ? `<button class="btn btn-success" onclick="completeSale(${sale.id})">Complete</button>` : ''}
+                <button class="btn btn-secondary" onclick="viewSale('${sale.id}')">View</button>
+                ${sale.status === 'pending' ? `<button class="btn btn-success" onclick="completeSale('${sale.id}')">Complete</button>` : ''}
             </td>
         </tr>
     `).join('');
@@ -330,7 +330,7 @@ function loadDelivery() {
             <td><span class="stock-badge ${getDeliveryStatusClass(delivery.status)}">${delivery.status}</span></td>
             <td>${delivery.assignedTo}</td>
             <td>
-                <button class="btn btn-secondary" onclick="updateDeliveryStatus(${delivery.id})">Update Status</button>
+                <button class="btn btn-secondary" onclick="updateDeliveryStatus('${delivery.id}')">Update Status</button>
             </td>
         </tr>
     `).join('');

@@ -321,28 +321,109 @@ function getStockStatus(stock) {
 
 // Stock management functions
 function loadStock() {
+    const escapeHtml = (unsafe) => {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
     const stockTable = document.getElementById('stockTable');
     stockTable.innerHTML = inventory.map(item => `
         <tr>
             <td>
                 <div style="width:50px;height:50px;overflow:hidden;border-radius:4px;">
-                    ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\"display:flex;align-items:center;justify-content:center;font-size:20px;\">🍞</span>'">` : `<span style="display:flex;align-items:center;justify-content:center;font-size:20px;">🍞</span>`}
+                    ${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\"display:flex;align-items:center;justify-content:center;font-size:20px;\">\\ud83c\\\udf5e</span>'">` : `<span style="display:flex;align-items:center;justify-content:center;font-size:20px;">\\ud83c\\\udf5e</span>`}
                 </div>
             </td>
-            <td>${item.name}</td>
-            <td>${item.description}</td>
+            <td>${escapeHtml(item.name)}</td>
+            <td>${escapeHtml(item.description)}</td>
             <td>${item.stock}</td>
             <td>R${item.price.toFixed(2)}</td>
             <td>R${(item.stock * item.price).toFixed(2)}</td>
             <td><span class="stock-badge ${getStockClass(item.stock)}">${getStockStatus(item.stock)}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="editProduct(${item.id})" style="margin-right:5px;">Edit</button>
-                <button class="btn btn-success" onclick="addStock(${item.id}, 1)" style="margin-right:5px;">+ Stock</button>
-                <button class="btn btn-warning" onclick="removeStock(${item.id}, 1)" style="margin-right:5px;">- Stock</button>
-                <button class="btn btn-danger" onclick="deleteStock(${item.id})">Delete</button>
+                <button class="btn btn-secondary" onclick="openStockActions('${item.id}')">Actions</button>
             </td>
         </tr>
     `).join('');
+}
+
+function openStockActions(itemId) {
+    if (!itemId) {
+        console.error('Invalid itemId passed to openStockActions:', itemId);
+        alert('Error: Invalid product ID.');
+        return;
+    }
+
+    const modalActions = document.getElementById('modalActions');
+    modalActions.innerHTML = `
+        <button class="btn btn-success" onclick="addStock('${itemId}', 1)">+ Stock</button>
+        <button class="btn btn-warning" onclick="removeStock('${itemId}', 1)">- Stock</button>
+        <button class="btn btn-secondary" onclick="editProduct('${itemId}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteStock('${itemId}')">Delete</button>
+    `;
+    openModal('stockActionsModal');
+}
+
+function editProduct(itemId) {
+    if (!itemId) {
+        console.error('Invalid itemId passed to editProduct:', itemId);
+        alert('Error: Invalid product ID.');
+        return;
+    }
+
+    const product = inventory.find(item => item.id === itemId);
+    if (!product) {
+        console.error('Product not found for itemId:', itemId);
+        alert('Product not found!');
+        return;
+    }
+
+    // Populate modal with product details for editing
+    const modalActions = document.getElementById('modalActions');
+    modalActions.innerHTML = `
+        <h3>Edit Product</h3>
+        <form id="editProductForm">
+            <label for="editProductName">Name:</label>
+            <input type="text" id="editProductName" value="${product.name}" required>
+
+            <label for="editProductDescription">Description:</label>
+            <textarea id="editProductDescription" required>${product.description}</textarea>
+
+            <label for="editProductStock">Stock:</label>
+            <input type="number" id="editProductStock" value="${product.stock}" required>
+
+            <label for="editProductPrice">Price:</label>
+            <input type="number" id="editProductPrice" value="${product.price}" step="0.01" required>
+
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    `;
+
+    const editForm = document.getElementById('editProductForm');
+    editForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const updatedProduct = {
+            name: document.getElementById('editProductName').value,
+            description: document.getElementById('editProductDescription').value,
+            stock: parseInt(document.getElementById('editProductStock').value),
+            price: parseFloat(document.getElementById('editProductPrice').value),
+        };
+
+        try {
+            await db.collection('products').doc(itemId).update(updatedProduct);
+            alert('Product updated successfully!');
+            closeModal('stockActionsModal');
+            loadStock();
+        } catch (error) {
+            console.error('Error updating product:', error);
+            alert('Error updating product: ' + error.message);
+        }
+    });
 }
 
 async function handleAddStock(e) {
@@ -368,19 +449,6 @@ async function handleAddStock(e) {
     } catch (error) {
         console.error('Error adding product:', error);
         alert('Error adding product: ' + error.message);
-    }
-}
-
-function editProduct(id) {
-    const item = inventory.find(item => item.id === id);
-    if (item) {
-        document.getElementById('editProductId').value = id;
-        document.getElementById('editProductName').value = item.name;
-        document.getElementById('editProductDescription').value = item.description;
-        document.getElementById('editQuantity').value = item.stock;
-        document.getElementById('editUnitPrice').value = item.price;
-        document.getElementById('editImageUrl').value = item.imageUrl || '';
-        openModal('editProductModal');
     }
 }
 
@@ -467,8 +535,8 @@ function loadSales() {
             <td>${sale.date}</td>
             <td><span class="stock-badge ${sale.status === 'completed' ? 'stock-in' : 'stock-low'}">${sale.status}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="viewSale(${sale.id})">View</button>
-                ${sale.status === 'pending' ? `<button class="btn btn-success" onclick="completeSale(${sale.id})">Complete</button>` : ''}
+                <button class="btn btn-secondary" onclick="viewSale('${sale.id}')">View</button>
+                ${sale.status === 'pending' ? `<button class="btn btn-success" onclick="completeSale('${sale.id}')">Complete</button>` : ''}
             </td>
         </tr>
     `).join('');

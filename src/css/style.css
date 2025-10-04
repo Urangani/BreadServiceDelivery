@@ -310,36 +310,71 @@
         .modal {
             display: none;
             position: fixed;
-            top: 0;
+            z-index: 1000;
             left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
         }
 
         .modal-content {
-            position: relative;
-            background: white;
-            margin: 5% auto;
-            padding: 2rem;
-            width: 90%;
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
             max-width: 500px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 8px;
+            text-align: center;
         }
 
         .close {
-            position: absolute;
-            right: 1rem;
-            top: 1rem;
-            font-size: 2rem;
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
-            color: #999;
         }
 
-        .close:hover {
-            color: #333;
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Button Styles for Modal */
+        .modal-content button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-content .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .modal-content .btn-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .modal-content .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* Hover Effects for Modal Buttons */
+        .modal-content button:hover {
+            opacity: 0.9;
         }
 
         /* Responsive */
