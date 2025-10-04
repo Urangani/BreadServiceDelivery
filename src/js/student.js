@@ -572,11 +572,15 @@ async function confirmReceipt(orderId) {
                 confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // Optionally update delivery status to confirmed
-            await db.collection('deliveries').doc(orderId).update({
-                status: 'confirmed',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            // Find the delivery document with matching orderId
+            const deliveryQuery = await db.collection('deliveries').where('orderId', '==', orderId).get();
+            if (!deliveryQuery.empty) {
+                const deliveryDoc = deliveryQuery.docs[0];
+                await db.collection('deliveries').doc(deliveryDoc.id).update({
+                    status: 'confirmed',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
             alert('Order receipt confirmed!');
         } catch (error) {
