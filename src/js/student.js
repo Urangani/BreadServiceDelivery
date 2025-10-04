@@ -121,16 +121,20 @@ function setupRealtimeListeners() {
     });
 
     // Orders listener (own orders)
-    ordersUnsubscribe = db.collection('orders').where('userId', '==', currentUser.uid).onSnapshot((snapshot) => {
-        sales = [];
-        snapshot.forEach((doc) => {
-            sales.push({ id: doc.id, ...doc.data() });
+    if (currentUser && currentUser.uid) {
+        ordersUnsubscribe = db.collection('orders').where('userId', '==', currentUser.uid).onSnapshot((snapshot) => {
+            sales = [];
+            snapshot.forEach((doc) => {
+                sales.push({ id: doc.id, ...doc.data() });
+            });
+            if (currentPage === 'dashboard') {
+                updateDashboardStats();
+                loadRecentActivity();
+            }
         });
-        if (currentPage === 'dashboard') {
-            updateDashboardStats();
-            loadRecentActivity();
-        }
-    });
+    } else {
+        console.warn('Current user UID not set. Skipping orders listener.');
+    }
 }
 
 // Event Listeners for student
@@ -358,6 +362,17 @@ function addToCart(productId) {
         alert(`${product.name} added to cart!`);
     } else {
         alert('Product out of stock!');
+    }
+}
+
+// Add missing getOrderStatusClass function
+function getOrderStatusClass(status) {
+    switch(status) {
+        case 'completed': return 'stock-in';
+        case 'pending': return 'stock-low';
+        case 'delivered': return 'stock-in';
+        case 'cancelled': return 'stock-out';
+        default: return 'stock-low';
     }
 }
 
