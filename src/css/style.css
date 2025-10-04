@@ -465,3 +465,24 @@
         .password-toggle:hover {
             color: #ff6b6b;
         }
+
+        /* Toggle Button Styles */
+        .toggle-btn {
+            background-color: #e9ecef;
+            color: #6c757d;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .toggle-btn.active {
+            background-color: #28a745;
+            color: #fff;
+        }
+
+        .toggle-btn:hover {
+            background-color: #d4d4d4;
+        }

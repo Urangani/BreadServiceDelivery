@@ -68,10 +68,13 @@ function setupEventListeners() {
     // Availability toggle
     const availabilityToggle = document.getElementById('availabilityToggle');
     if (availabilityToggle) {
-        availabilityToggle.addEventListener('change', async function() {
+        availabilityToggle.addEventListener('click', async function () {
+            const isActive = availabilityToggle.classList.toggle('active');
+            availabilityToggle.textContent = isActive ? 'Available' : 'Unavailable';
+
             try {
                 await db.collection('users').doc(currentUser.uid).update({
-                    available: this.checked
+                    available: isActive
                 });
             } catch (error) {
                 console.error('Error updating availability:', error);
