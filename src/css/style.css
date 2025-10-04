@@ -1,5 +1,4 @@
-
-        * {
+* {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -431,4 +430,38 @@
         }
         .quantity-btn:hover {
             background: #ee5a24;
+        }
+
+        /* Password wrapper */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-input {
+            border: none;
+            border-bottom: 2px solid #e9ecef;
+            border-radius: 0;
+            padding-right: 50px; /* Space for the toggle button */
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-bottom-color: #ff6b6b;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #6c757d;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .password-toggle:hover {
+            color: #ff6b6b;
         }

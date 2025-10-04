@@ -55,9 +55,18 @@ async function handleLogin(e) {
 // Initialize the application
 function init() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('showPassword').addEventListener('change', function() {
+
+    // Add event listener for the toggle password button
+    const togglePasswordButton = document.getElementById('togglePassword');
+    togglePasswordButton.addEventListener('click', function () {
         const passwordInput = document.getElementById('password');
-        passwordInput.type = this.checked ? 'text' : 'password';
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            togglePasswordButton.textContent = 'Hide';
+        } else {
+            passwordInput.type = 'password';
+            togglePasswordButton.textContent = 'Show';
+        }
     });
 }
 
